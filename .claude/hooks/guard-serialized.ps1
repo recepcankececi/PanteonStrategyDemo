@@ -12,7 +12,8 @@ $toolInput = $payload.tool_input
 
 # Protected Unity-serialized extensions — keep this list as the only definition.
 $ext = 'unity|prefab|asset|meta|mat|spriteatlas|spriteatlasv2|anim|controller|overrideController|physicsMaterial2D|scenetemplate|shadergraph|shadersubgraph|preset|inputactions|lighting|mask|playable|signal|asmdef|asmref'
-$serializedFile = "\.($ext)\b"
+# Negative lookahead instead of \b: '-' is a word boundary, so \b let ".unity-mcp" match.
+$serializedFile = "\.($ext)(?![\w-])"
 
 function Block([string]$msg) {
     [Console]::Error.WriteLine("BLOCKED: $msg")
@@ -31,6 +32,14 @@ if ($tool -in @('Edit', 'Write', 'MultiEdit')) {
 
 if ($tool -in @('Bash', 'PowerShell')) {
     $cmd = [string]$toolInput.command
+
+    # Commit messages and other literal text mention "push", "add -A" or file names without
+    # executing them; match only on the command words that remain after removing them.
+    # Order matters: heredoc delimiters are often quoted ('EOF'), so heredocs go first.
+    $cmd = [regex]::Replace($cmd, "(?ms)<<-?[ \t]*(['""]?)(\w+)\1.*?^[ \t]*\2[ \t]*$", '')
+    $cmd = [regex]::Replace($cmd, "(?ms)@(['""])\r?\n.*?^\1@", '')   # PowerShell here-strings
+    $cmd = [regex]::Replace($cmd, "'[^']*'|""(?:[^""\\]|\\.)*""", '')
+    $cmd = [regex]::Replace($cmd, '(?<=\s)(-m|-F|--message|--file)(=|\s+)\S*', '')
 
     # --- git safety ---
     if ($cmd -match '\bgit(\s+-C\s+\S+)?\s+push\b')                 { Block 'git push is forbidden; Can pushes manually.' }
