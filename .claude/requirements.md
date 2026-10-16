@@ -8,7 +8,7 @@ Every item must be traceable to code/tests/scene. `/verify` checks each ID.
 - P3 Full project shared via GitHub (link emailed to hr@panteon.games).
 
 ## Gameplay
-- R1 Various building types besides Barracks, Power Plant; Soldier units listed in Production Menu.
+- R1 Various building types besides Barracks and Power Plant. The Production Menu lists buildings only; soldiers are produced from the Information Panel of a selected Barracks (see R4, R5).
 - R2 Buildings placed on map at user-selected suitable locations; **invalid placement shown to user** (e.g. red preview). Buildings have **name, image, dimensions**.
 - R3 Unlimited production, **no production time** (buildings and units).
 - R4 Selecting a building on the board shows its image in the Information Panel; if it can produce units, their images are listed too.
