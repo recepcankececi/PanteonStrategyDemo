@@ -28,6 +28,7 @@ Language: code, comments, commits, README → English. `../case-devdocs` → Tur
    - At session start, if either repo has uncommitted changes you did not make (planning edits to `CLAUDE.md`, `.claude/`, `Packages/manifest.json` or devdocs), commit them first as a separate `chore:`/`docs:` commit with explicit paths — these exceptions to the staging rule are allowed here.
    - Keep the `Co-Authored-By: Claude` trailer on every commit (transparent AI use; Can's decision, ADR-000).
 8. **Docs gate:** before finishing, update `../case-devdocs` (Turkish): `Systems/<system>.md`, `Log.md`, and an ADR for every critical choice. A Stop hook enforces this (devdocs must be newer than the last game change).
+9. **Docs are interview prep.** Can will defend this code in a technical interview. Write devdocs in a teaching tone (explain concepts, not just decisions). Every ADR and `Systems/` doc follows its template, including **Senaryolar** (≥3, one from an alternative's point of view) and **Mülakat soruları** (question → short answer); append new questions to `../case-devdocs/Mulakat/Soru-Bankasi.md`. Code you can't explain simply is a smell — simplify it.
 
 ## Project layout (target — created in M0)
 ```
