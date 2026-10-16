@@ -1,0 +1,11 @@
+{
+    "name": "StrategyDemo.UI",
+    "rootNamespace": "StrategyDemo.UI",
+    "references": [
+        "StrategyDemo.Data",
+        "StrategyDemo.Gameplay",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
+    ],
+    "autoReferenced": false
+}

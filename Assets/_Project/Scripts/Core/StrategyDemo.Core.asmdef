@@ -1,0 +1,6 @@
+{
+    "name": "StrategyDemo.Core",
+    "rootNamespace": "StrategyDemo.Core",
+    "references": [],
+    "autoReferenced": false
+}

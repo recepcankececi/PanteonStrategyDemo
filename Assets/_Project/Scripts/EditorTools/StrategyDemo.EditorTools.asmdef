@@ -1,0 +1,9 @@
+{
+    "name": "StrategyDemo.EditorTools",
+    "rootNamespace": "StrategyDemo.EditorTools",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "autoReferenced": false
+}

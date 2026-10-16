@@ -1,0 +1,12 @@
+{
+    "name": "StrategyDemo.App",
+    "rootNamespace": "StrategyDemo.App",
+    "references": [
+        "StrategyDemo.Data",
+        "StrategyDemo.Core",
+        "StrategyDemo.Gameplay",
+        "StrategyDemo.UI",
+        "Unity.InputSystem"
+    ],
+    "autoReferenced": false
+}

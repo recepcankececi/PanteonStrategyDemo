@@ -1,0 +1,9 @@
+{
+    "name": "StrategyDemo.Gameplay",
+    "rootNamespace": "StrategyDemo.Gameplay",
+    "references": [
+        "StrategyDemo.Data",
+        "StrategyDemo.Core"
+    ],
+    "autoReferenced": false
+}
