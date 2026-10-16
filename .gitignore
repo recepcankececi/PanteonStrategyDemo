@@ -1,0 +1,36 @@
+# Unity generated
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Build output (submission build delivery decided in a later ADR)
+/[Bb]uild/
+/[Bb]uilds/
+
+# IDE
+.idea/
+.vs/
+*.csproj
+*.sln
+*.slnx
+*.user
+*.suo
+*.DotSettings.user
+
+# Crash reports / misc
+sysinfo.txt
+crashlytics-build.properties
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local-only settings
+.claude/settings.local.json
