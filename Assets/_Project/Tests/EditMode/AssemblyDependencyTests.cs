@@ -27,10 +27,10 @@ namespace StrategyDemo.Tests.EditMode
             ["StrategyDemo.Data"] = new string[0],
             ["StrategyDemo.Core"] = new string[0],
             ["StrategyDemo.Gameplay"] = new[] { "StrategyDemo.Data", "StrategyDemo.Core" },
-            ["StrategyDemo.UI"] = new[] { "StrategyDemo.Data", "StrategyDemo.Gameplay" },
+            ["StrategyDemo.UI"] = new[] { "StrategyDemo.Data", "StrategyDemo.Core", "StrategyDemo.Gameplay" },
             ["StrategyDemo.App"] = new[] { "StrategyDemo.Data", "StrategyDemo.Core", "StrategyDemo.Gameplay", "StrategyDemo.UI" },
             ["StrategyDemo.EditorTools"] = new[] { "StrategyDemo.Data", "StrategyDemo.Core", "StrategyDemo.Gameplay", "StrategyDemo.UI", "StrategyDemo.App" },
-            ["StrategyDemo.Tests.EditMode"] = new[] { "StrategyDemo.Data", "StrategyDemo.Core", "StrategyDemo.Gameplay", "StrategyDemo.EditorTools" }
+            ["StrategyDemo.Tests.EditMode"] = new[] { "StrategyDemo.Data", "StrategyDemo.Core", "StrategyDemo.Gameplay", "StrategyDemo.UI", "StrategyDemo.EditorTools" }
         };
 
         private static IEnumerable<string> ModuleNames => AllowedModuleReferences.Keys;

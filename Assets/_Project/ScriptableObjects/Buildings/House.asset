@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: StrategyDemo.Data::StrategyDemo.Data.BuildingDefinition
   _displayName: House
   _sprite: {fileID: 21300000, guid: 92b737cd3ca0c604f93a2deeab6ff8d0, type: 3}
+  _footprint: {x: 2, y: 2}
   _maxHealth: 60
   _producibleUnits: []
   _spawnOffset: {x: 0, y: 0}

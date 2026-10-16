@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
 
-// An asmdef with no scripts is not compiled; this file keeps the module building until its first
-// class arrives, and opens internals to tests should a later ADR let tests reference this module.
+// Lets EditMode tests exercise internal helpers without widening the public API.
 [assembly: InternalsVisibleTo("StrategyDemo.Tests.EditMode")]

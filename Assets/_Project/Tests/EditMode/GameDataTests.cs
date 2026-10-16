@@ -17,15 +17,16 @@ namespace StrategyDemo.Tests.EditMode
         private const string GridConfigPath = DataFolder + "Grid/GridConfig.asset";
         private const int SoldierHealth = 10;
 
-        // name, asset, HP, sprite texture, footprint w, footprint h
+        // name, asset, HP, sprite, footprint w, footprint h. Footprints cover the walls only (ADR-003 update, M2):
+        // Tiny Swords draws every building's walls in the bottom two 64 px rows; roofs and towers overlap the rows above.
         private static readonly object[] Buildings =
         {
-            new object[] { "Barracks", "Barracks", 100, "Barracks", 3, 4 },
-            new object[] { "Power Plant", "PowerPlant", 50, "Tower", 2, 4 },
-            new object[] { "House", "House", 60, "House1", 2, 3 },
-            new object[] { "Archery", "Archery", 80, "Archery", 3, 4 },
-            new object[] { "Monastery", "Monastery", 120, "Monastery", 3, 5 },
-            new object[] { "Castle", "Castle", 200, "Castle", 5, 4 }
+            new object[] { "Barracks", "Barracks", 100, "Barracks", 3, 2 },
+            new object[] { "Power Plant", "PowerPlant", 50, "Tower", 2, 2 },
+            new object[] { "House", "House", 60, "House1", 2, 2 },
+            new object[] { "Archery", "Archery", 80, "Archery", 3, 2 },
+            new object[] { "Monastery", "Monastery", 120, "Monastery", 3, 2 },
+            new object[] { "Castle", "Castle", 200, "Castle", 5, 2 }
         };
 
         // asset, display name, damage, range, icon sprite
@@ -75,7 +76,32 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(building.Sprite, Is.Not.Null);
             // Sprite name, not texture name: once packed, Sprite.texture is the atlas page.
             Assert.That(building.Sprite.name, Is.EqualTo(sprite));
-            Assert.That(building.GetFootprint(_grid.CellPixelSize), Is.EqualTo(new Vector2Int(footprintX, footprintY)));
+            Assert.That(building.Footprint, Is.EqualTo(new Vector2Int(footprintX, footprintY)));
+        }
+
+        [TestCaseSource(nameof(Buildings))]
+        public void Building_FootprintIsAsWideAsSpriteAndNoTaller(
+            string displayName, string asset, int health, string sprite, int footprintX, int footprintY)
+        {
+            BuildingDefinition building = LoadBuilding(asset);
+            Vector2 spriteCells = building.Sprite.rect.size / _grid.CellPixelSize;
+
+            // Same width: the base spans the whole image. Taller sprite allowed: the roof may overlap upper cells.
+            Assert.That(building.Footprint.x, Is.GreaterThanOrEqualTo(1));
+            Assert.That(building.Footprint.y, Is.GreaterThanOrEqualTo(1));
+            Assert.That(spriteCells.x, Is.EqualTo(building.Footprint.x));
+            Assert.That(spriteCells.y, Is.GreaterThanOrEqualTo(building.Footprint.y));
+        }
+
+        [TestCaseSource(nameof(Buildings))]
+        public void Building_SpritePivotIsBottomCentreOfBase(
+            string displayName, string asset, int health, string sprite, int footprintX, int footprintY)
+        {
+            Sprite image = LoadBuilding(asset).Sprite;
+
+            // Bottom centre: placing the transform at the footprint's bottom edge puts the walls on their cells,
+            // and Y-sorting by pivot then compares where buildings stand, not where their roofs end.
+            Assert.That(image.pivot, Is.EqualTo(new Vector2(image.rect.width * 0.5f, 0f)));
         }
 
         [TestCaseSource(nameof(Buildings))]
@@ -107,7 +133,7 @@ namespace StrategyDemo.Tests.EditMode
         public void Barracks_SpawnCellIsJustOutsideItsFootprint()
         {
             BuildingDefinition barracks = LoadBuilding("Barracks");
-            Vector2Int size = barracks.GetFootprint(_grid.CellPixelSize);
+            Vector2Int size = barracks.Footprint;
             Vector2Int spawn = barracks.SpawnOffset;
 
             // Chebyshev distance from the spawn cell to the nearest footprint cell: 0 = inside, 1 = touching.

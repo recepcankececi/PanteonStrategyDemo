@@ -2,6 +2,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using StrategyDemo.Gameplay;
+using StrategyDemo.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -27,6 +28,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string GroundSortingLayer = "Ground";
         private const string UnlitSpriteMaterial = "Sprite-Unlit-Default";
         private const string ScriptPropertyName = "m_Script";
+        private const string PanelSpriteName = "WoodTable_Stitched";
 
         // ADR-001 Karar 7: one Canvas scaled from a 1920x1080 reference, width and height weighted equally.
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
@@ -201,6 +203,52 @@ namespace StrategyDemo.Tests.EditMode
 
             Assert.That(eventSystem, Is.Not.Null);
             Assert.That(eventSystem.GetComponent<InputSystemUIInputModule>(), Is.Not.Null);
+        }
+
+        [Test]
+        public void ProductionMenu_IsUnrestrictedVerticalScrollInProductionPanel()
+        {
+            ProductionMenu menu = UiElement(ProductionMenuPanel).GetComponentInChildren<ProductionMenu>(true);
+            Assert.That(menu, Is.Not.Null);
+
+            // Same GameObject: drag events reach only the dragged object, and the menu needs them (ADR-004).
+            var scrollRect = menu.GetComponent<ScrollRect>();
+            Assert.That(scrollRect, Is.Not.Null);
+            Assert.That(new SerializedObject(menu).FindProperty("_itemPrefab").objectReferenceValue, Is.Not.Null);
+            Assert.That(scrollRect.vertical, Is.True);
+            Assert.That(scrollRect.horizontal, Is.False);
+            // Unrestricted: no end to clamp against, the list loops (ADR-001 Karar 8). An infinite list has no scrollbar.
+            Assert.That(scrollRect.movementType, Is.EqualTo(ScrollRect.MovementType.Unrestricted));
+            Assert.That(scrollRect.verticalScrollbar, Is.Null);
+            Assert.That(scrollRect.content, Is.Not.Null);
+            Assert.That(scrollRect.content.anchorMin.y, Is.EqualTo(1f), "Rows hang from the content's top edge.");
+            Assert.That(scrollRect.content.anchorMax.y, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void ProductionViewport_ClipsWithRectMaskInsideNestedCanvas()
+        {
+            ScrollRect scrollRect = UiElement(ProductionMenuPanel).GetComponentInChildren<ScrollRect>(true);
+            RectTransform viewport = scrollRect.viewport;
+
+            Assert.That(viewport, Is.Not.Null);
+            // RectMask2D clips without the stencil pass a Mask adds (ADR-001 Karar 9).
+            Assert.That(viewport.GetComponent<RectMask2D>(), Is.Not.Null);
+            Assert.That(viewport.GetComponent<Mask>(), Is.Null);
+            // Nested canvas: scrolling rebuilds only the list, not the static panels (ADR-001 Karar 7).
+            Assert.That(viewport.GetComponent<Canvas>(), Is.Not.Null);
+            Assert.That(viewport.GetComponent<GraphicRaycaster>(), Is.Not.Null, "A nested canvas needs its own raycaster for clicks.");
+        }
+
+        [TestCase(ProductionMenuPanel)]
+        [TestCase(InformationPanel)]
+        public void SidePanel_UsesStitchedWoodPanelSprite(string panelName)
+        {
+            Image panel = UiElement(panelName).GetComponent<Image>();
+
+            Assert.That(panel.sprite, Is.Not.Null);
+            Assert.That(panel.sprite.name, Is.EqualTo(PanelSpriteName));
+            Assert.That(panel.type, Is.EqualTo(Image.Type.Tiled));
         }
 
         private GameObject Root(string name)

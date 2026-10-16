@@ -14,8 +14,11 @@ namespace StrategyDemo.Tests.EditMode
         private const int DefaultWindowWidth = 1600;
         private const int DefaultWindowHeight = 900;
 
-        // ADR-001 Karar 9: fixed draw order, Default stays first because Unity cannot remove it.
-        private static readonly string[] ExpectedSortingLayers = { "Default", "Ground", "Buildings", "Units", "FX" };
+        private const string Renderer2DPath = "Assets/_Project/Settings/Renderer2D.asset";
+
+        // ADR-001 Karar 9 as updated by ADR-004: buildings and units share "Objects" so they can sort by Y
+        // against each other. Default stays first because Unity cannot remove it.
+        private static readonly string[] ExpectedSortingLayers = { "Default", "Ground", "Objects", "FX" };
 
         [Test]
         public void BuildSettings_EnabledScenes_AreOnlyMainScene()
@@ -47,6 +50,16 @@ namespace StrategyDemo.Tests.EditMode
             string[] layers = SortingLayer.layers.Select(layer => layer.name).ToArray();
 
             Assert.That(layers, Is.EqualTo(ExpectedSortingLayers));
+        }
+
+        [Test]
+        public void Renderer2D_SortsTransparentObjectsAlongWorldY()
+        {
+            // Within one sorting layer and order, a lower pivot (closer to the viewer) draws in front.
+            var renderer = new SerializedObject(AssetDatabase.LoadMainAssetAtPath(Renderer2DPath));
+
+            Assert.That(renderer.FindProperty("m_TransparencySortMode").intValue, Is.EqualTo((int)TransparencySortMode.CustomAxis));
+            Assert.That(renderer.FindProperty("m_TransparencySortAxis").vector3Value, Is.EqualTo(Vector3.up));
         }
     }
 }

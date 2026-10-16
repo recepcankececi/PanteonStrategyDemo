@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: StrategyDemo.Data::StrategyDemo.Data.BuildingDefinition
   _displayName: Barracks
   _sprite: {fileID: 21300000, guid: b47e7d57ce4aa5044acd0e0ddc535621, type: 3}
+  _footprint: {x: 3, y: 2}
   _maxHealth: 100
   _producibleUnits:
   - {fileID: 11400000, guid: e4634a3a685e42b4f80435b1c56ab585, type: 2}

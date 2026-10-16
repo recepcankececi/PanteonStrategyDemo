@@ -3,6 +3,7 @@
     "rootNamespace": "StrategyDemo.UI",
     "references": [
         "StrategyDemo.Data",
+        "StrategyDemo.Core",
         "StrategyDemo.Gameplay",
         "UnityEngine.UI",
         "Unity.TextMeshPro"

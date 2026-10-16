@@ -44,11 +44,8 @@ TagManager:
   - name: Ground
     uniqueID: 2024493761
     locked: 0
-  - name: Buildings
+  - name: Objects
     uniqueID: 1660445297
-    locked: 0
-  - name: Units
-    uniqueID: 166816837
     locked: 0
   - name: FX
     uniqueID: 1910301108
