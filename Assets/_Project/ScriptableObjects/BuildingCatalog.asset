@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aac7ee0c7335b6d4c8c7687dcb761a86, type: 3}
+  m_Name: BuildingCatalog
+  m_EditorClassIdentifier: StrategyDemo.Data::StrategyDemo.Data.BuildingCatalog
+  _buildings:
+  - {fileID: 11400000, guid: 17702bfdf27583e4e836e40bb15cf0ad, type: 2}
+  - {fileID: 11400000, guid: 33fc2e19501373349900a8a5d1969006, type: 2}
+  - {fileID: 11400000, guid: 69ac59a2383e6484ea43053d73f5a55a, type: 2}
+  - {fileID: 11400000, guid: 3265da14cab889241939e016bc1fef07, type: 2}
+  - {fileID: 11400000, guid: e70ad8402b9f7214388009b19fad5503, type: 2}
+  - {fileID: 11400000, guid: 00cb6ab8bf45c5b42a15f3dbcfe3d3d8, type: 2}

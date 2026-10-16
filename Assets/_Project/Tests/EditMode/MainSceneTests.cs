@@ -1,6 +1,8 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
+using StrategyDemo.Gameplay;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -21,6 +23,10 @@ namespace StrategyDemo.Tests.EditMode
         private const string ProductionMenuPanel = "ProductionMenuPanel";
         private const string GameBoardArea = "GameBoardArea";
         private const string InformationPanel = "InformationPanel";
+        private const string GameBootstrapName = "GameBootstrap";
+        private const string GroundSortingLayer = "Ground";
+        private const string UnlitSpriteMaterial = "Sprite-Unlit-Default";
+        private const string ScriptPropertyName = "m_Script";
 
         // ADR-001 Karar 7: one Canvas scaled from a 1920x1080 reference, width and height weighted equally.
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
@@ -116,6 +122,76 @@ namespace StrategyDemo.Tests.EditMode
             // The board starts where the left panel ends and stops where the right panel starts.
             Assert.That(board.offsetMin.x, Is.EqualTo(production.rect.width));
             Assert.That(board.offsetMax.x, Is.EqualTo(-information.rect.width));
+        }
+
+        [Test]
+        public void BoardGroup_HasGridWithTiledUnlitGroundOnGroundLayer()
+        {
+            GridView grid = Root(BoardGroup).GetComponentInChildren<GridView>(true);
+            Assert.That(grid, Is.Not.Null);
+
+            SpriteRenderer ground = grid.GetComponentInChildren<SpriteRenderer>(true);
+            Assert.That(ground, Is.Not.Null);
+            Assert.That(ground.drawMode, Is.EqualTo(SpriteDrawMode.Tiled));
+            Assert.That(ground.sortingLayerName, Is.EqualTo(GroundSortingLayer));
+            // ADR-001 Karar 9: no 2D lights are used, so sprites render unlit (one pass, batches with the atlas).
+            Assert.That(ground.sharedMaterial, Is.Not.Null);
+            Assert.That(ground.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
+        }
+
+        [Test]
+        public void Ground_SpriteSupportsTiledNineSliceCentredOnBoard()
+        {
+            SpriteRenderer ground = Root(BoardGroup).GetComponentInChildren<GridView>(true).GetComponentInChildren<SpriteRenderer>(true);
+            Sprite sprite = ground.sprite;
+            Assert.That(sprite, Is.Not.Null);
+
+            // GridView places the ground at the board centre, which is only right for a centred pivot.
+            Assert.That(sprite.pivot, Is.EqualTo(sprite.rect.size * 0.5f));
+            // A border is what keeps the bush edge on the rim while the grass repeats.
+            Assert.That(sprite.border, Is.Not.EqualTo(Vector4.zero));
+            string assetPath = AssetDatabase.GetAssetPath(sprite);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(assetPath);
+            var settings = new TextureImporterSettings();
+            importer.ReadTextureSettings(settings);
+            Assert.That(settings.spriteMeshType, Is.EqualTo(SpriteMeshType.FullRect), "Tiled draw mode needs a Full Rect mesh.");
+        }
+
+        [Test]
+        public void Camera_FitsBoardToBoardArea()
+        {
+            BoardCameraFitter fitter = Root(CameraGroup).GetComponentInChildren<BoardCameraFitter>(true);
+            Assert.That(fitter, Is.Not.Null);
+
+            var boardArea = new SerializedObject(fitter).FindProperty("_boardArea").objectReferenceValue as RectTransform;
+            Assert.That(boardArea, Is.Not.Null);
+            Assert.That(boardArea.name, Is.EqualTo(GameBoardArea));
+        }
+
+        [Test]
+        public void SystemsGroup_HasGameBootstrapWithAllReferencesAssigned()
+        {
+            // Found by type name: the test assembly may not reference App (ADR-001 Karar 3).
+            MonoBehaviour bootstrap = Root(SystemsGroup).GetComponentsInChildren<MonoBehaviour>(true)
+                .SingleOrDefault(component => component.GetType().Name == GameBootstrapName);
+            Assert.That(bootstrap, Is.Not.Null);
+
+            var serialized = new SerializedObject(bootstrap);
+            SerializedProperty property = serialized.GetIterator();
+            int checkedReferences = 0;
+            // Walk every serialized object reference so a newly added field is covered automatically.
+            for (bool enterChildren = true; property.NextVisible(enterChildren); enterChildren = false)
+            {
+                if (property.propertyType != SerializedPropertyType.ObjectReference || property.name == ScriptPropertyName)
+                {
+                    continue;
+                }
+
+                Assert.That(property.objectReferenceValue, Is.Not.Null, $"{GameBootstrapName}.{property.name} is unassigned.");
+                checkedReferences++;
+            }
+
+            Assert.That(checkedReferences, Is.GreaterThan(0));
         }
 
         [Test]
