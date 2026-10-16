@@ -6,11 +6,11 @@ disable-model-invocation: true
 
 # /build-win
 
-Precondition: `Assets/_Project/Scripts/Editor/BuildScript.cs` exists (created in M0) with
-menu `Tools/Build/Windows` and static method `StrategyDemo.Editor.BuildScript.BuildWindows`.
+Precondition: `Assets/_Project/Scripts/EditorTools/BuildScript.cs` exists (created in M0) with
+menu `Tools/Build/Windows` and static method `StrategyDemo.EditorTools.BuildScript.BuildWindows`.
 
-- **Editor open (normal case):** trigger the menu item `Tools/Build/Windows` via MCP (execute menu item), then read console for build result.
-- **Editor closed:** run batchmode (Unity path from `../case-devdocs/Tooling/Kurulum.md`):
-  `"<UnityPath>\Unity.exe" -batchmode -quit -projectPath . -executeMethod StrategyDemo.Editor.BuildScript.BuildWindows -logFile Builds/build.log`
+- **Editor open (normal case):** execute menu item `Tools/Build/Windows` via MCP, then read the console for the build result.
+- **Editor closed:** batchmode (Unity path in `../case-devdocs/Tooling/Kurulum.md`):
+  `"<UnityPath>\Unity.exe" -batchmode -quit -projectPath . -executeMethod StrategyDemo.EditorTools.BuildScript.BuildWindows -logFile Builds/build.log`
 
-Then report: build path, size, errors/warnings. Remind Can to: run the exe, resize the window, test 16:9 / 21:9 / 4:3, check SetPass in Frame Debugger (Editor) — those are his PASS items.
+Report: build path, size, errors/warnings. Remind Can to run the exe, resize the window, try 16:9 / 21:9 / 4:3, and check SetPass in the Frame Debugger — his PASS items.

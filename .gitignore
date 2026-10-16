@@ -34,3 +34,6 @@ Thumbs.db
 
 # Claude Code local-only settings
 .claude/settings.local.json
+
+# MCP client config (local per machine)
+.mcp.json

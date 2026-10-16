@@ -9,18 +9,23 @@
       "Bash(git log:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git -C ../case-devdocs:*)"
+      "Bash(git -C ../case-devdocs status:*)",
+      "Bash(git -C ../case-devdocs diff:*)",
+      "Bash(git -C ../case-devdocs log:*)",
+      "Bash(git -C ../case-devdocs add:*)",
+      "Bash(git -C ../case-devdocs commit:*)"
     ],
     "deny": [
       "Bash(git push:*)",
       "Bash(git reset --hard:*)",
-      "Bash(git clean:*)"
+      "Bash(git clean:*)",
+      "Bash(git add -A:*)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|Bash",
+        "matcher": "Edit|Write|MultiEdit|Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
