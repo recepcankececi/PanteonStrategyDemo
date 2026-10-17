@@ -1,0 +1,73 @@
+using System;
+using System.Collections.Generic;
+using StrategyDemo.Core;
+
+namespace StrategyDemo.Gameplay
+{
+    /// <summary>
+    /// Hands out occupant ids and maps an id back to its building or soldier. The grid stores only ids (cheap,
+    /// engine-free); this is the "id → object" half, so a clicked cell can be turned into the object on it.
+    /// </summary>
+    /// <remarks>
+    /// Ids are handed out before the object exists because the grid is occupied first (the grid is the source of
+    /// truth; see <see cref="BuildingPlacer.TryPlace"/>). Ids are never reused, so a stale id can never point at a
+    /// newer object that took over the same number.
+    /// </remarks>
+    public sealed class OccupantRegistry
+    {
+        private readonly Dictionary<int, IBoardOccupant> _occupants = new Dictionary<int, IBoardOccupant>();
+        // Last id handed out; 0 is GridMap.EmptyId, so the first id is 1.
+        private int _lastId = GridMap.EmptyId;
+
+        /// <summary>Number of registered occupants.</summary>
+        public int Count => _occupants.Count;
+
+        /// <summary>
+        /// Every registered occupant, in no particular order. The concrete collection type lets <c>foreach</c> use its
+        /// struct enumerator, so iterating allocates nothing.
+        /// </summary>
+        public Dictionary<int, IBoardOccupant>.ValueCollection All => _occupants.Values;
+
+        /// <summary>Returns a new, never used id for an occupant about to be created.</summary>
+        public int NextId()
+        {
+            return ++_lastId;
+        }
+
+        /// <summary>Registers <paramref name="occupant"/> under its <see cref="IBoardOccupant.OccupantId"/>.</summary>
+        /// <exception cref="ArgumentNullException"><paramref name="occupant"/> is null.</exception>
+        /// <exception cref="ArgumentException">The id was not handed out by <see cref="NextId"/> or is already registered.</exception>
+        public void Add(IBoardOccupant occupant)
+        {
+            if (occupant == null)
+            {
+                throw new ArgumentNullException(nameof(occupant));
+            }
+
+            int id = occupant.OccupantId;
+            if (id <= GridMap.EmptyId || id > _lastId)
+            {
+                throw new ArgumentException($"Occupant id {id} was not handed out by this registry.", nameof(occupant));
+            }
+
+            if (_occupants.ContainsKey(id))
+            {
+                throw new ArgumentException($"Occupant id {id} is already registered.", nameof(occupant));
+            }
+
+            _occupants.Add(id, occupant);
+        }
+
+        /// <summary>Forgets the occupant with <paramref name="occupantId"/>. Returns false when none was registered.</summary>
+        public bool Remove(int occupantId)
+        {
+            return _occupants.Remove(occupantId);
+        }
+
+        /// <summary>Looks up the occupant registered under <paramref name="occupantId"/>.</summary>
+        public bool TryGet(int occupantId, out IBoardOccupant occupant)
+        {
+            return _occupants.TryGetValue(occupantId, out occupant);
+        }
+    }
+}

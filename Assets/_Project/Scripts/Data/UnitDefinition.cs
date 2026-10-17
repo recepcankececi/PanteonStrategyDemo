@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace StrategyDemo.Data
@@ -16,6 +18,9 @@ namespace StrategyDemo.Data
         [SerializeField, Min(1), Tooltip("Attack reach in cells; 1 = adjacent cells only.")] private int _attackRange = 1;
         [SerializeField, Min(0.01f), Tooltip("Seconds between two attacks.")] private float _attackInterval = 1f;
         [SerializeField, Min(0.01f), Tooltip("Movement speed in cells per second.")] private float _moveSpeed = 3f;
+        [SerializeField, Tooltip("Idle animation frames, looped on the board. Pivot below the feet: at the bottom-edge middle of the cell.")]
+        private Sprite[] _idleFrames = Array.Empty<Sprite>();
+        [SerializeField, Min(0.01f), Tooltip("Idle animation speed in frames per second.")] private float _idleFramesPerSecond = 8f;
 
         /// <summary>Name shown to the player.</summary>
         public string DisplayName => _displayName;
@@ -37,5 +42,11 @@ namespace StrategyDemo.Data
 
         /// <summary>Movement speed in cells per second.</summary>
         public float MoveSpeed => _moveSpeed;
+
+        /// <summary>Idle animation frames in order. Read-only by contract: never cast back to an array, the asset is shared.</summary>
+        public IReadOnlyList<Sprite> IdleFrames => _idleFrames;
+
+        /// <summary>Idle animation speed in frames per second.</summary>
+        public float IdleFramesPerSecond => _idleFramesPerSecond;
     }
 }

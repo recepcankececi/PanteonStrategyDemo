@@ -18,14 +18,17 @@ namespace StrategyDemo.Gameplay
     public sealed class BuildingPlacer
     {
         private readonly GridMap _grid;
+        private readonly OccupantRegistry _occupants;
         private readonly IBuildingFactory _factory;
-        // Last id handed out; 0 is GridMap.EmptyId, so the first building gets 1.
-        private int _lastOccupantId = GridMap.EmptyId;
 
+        /// <param name="grid">Board occupancy; placed buildings are written into it.</param>
+        /// <param name="occupants">Hands out ids and records every placed building, so its cells lead back to it.</param>
+        /// <param name="factory">Creates the scene object.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-        public BuildingPlacer(GridMap grid, IBuildingFactory factory)
+        public BuildingPlacer(GridMap grid, OccupantRegistry occupants, IBuildingFactory factory)
         {
             _grid = grid ?? throw new ArgumentNullException(nameof(grid));
+            _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
@@ -92,8 +95,8 @@ namespace StrategyDemo.Gameplay
         }
 
         /// <summary>
-        /// Places the building at the candidate when it is valid: occupies the grid and creates the scene
-        /// object. Afterwards placement ends, unless <paramref name="keepPlacing"/> is true (Shift held).
+        /// Places the building at the candidate when it is valid: occupies the grid, creates the scene
+        /// object and registers it. Afterwards placement ends, unless <paramref name="keepPlacing"/> is true (Shift held).
         /// </summary>
         /// <returns>True when a building was placed; false when not placing, no candidate, or the spot is not free.</returns>
         /// <remarks>If the factory throws, the grid is restored and the exception is passed on.</remarks>
@@ -113,13 +116,13 @@ namespace StrategyDemo.Gameplay
                 return false;
             }
 
-            int occupantId = ++_lastOccupantId;
+            int occupantId = _occupants.NextId();
             // Grid first: it is the source of truth. If the scene object cannot be created, give the cells back,
             // or the spot would stay blocked forever with nothing standing on it.
             _grid.Occupy(CandidateOrigin, placed.Footprint, occupantId);
             try
             {
-                _factory.Create(placed, CandidateOrigin, occupantId);
+                _occupants.Add(_factory.Create(placed, CandidateOrigin, occupantId));
             }
             catch
             {

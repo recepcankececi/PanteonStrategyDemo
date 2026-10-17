@@ -20,31 +20,35 @@ namespace StrategyDemo.Gameplay
         }
 
         /// <summary>Applies one frame of input; does nothing while the player is not placing.</summary>
-        public void Handle(in PointerInput input)
+        /// <returns>
+        /// True when placement owned this frame's input (the player was placing), so no other handler may act on
+        /// the same click; e.g. the click that places a building must not also select it.
+        /// </returns>
+        public bool Handle(in PointerInput input)
         {
             if (!_placer.IsPlacing)
             {
-                return;
+                return false;
             }
 
             // Esc is a keyboard action, so it works wherever the pointer is.
             if (input.CancelPressed)
             {
                 _placer.Cancel();
-                return;
+                return true;
             }
 
             if (input.IsOverUi)
             {
                 // Hide the ghost behind the panels; a menu click arrives separately as a new Begin.
                 _placer.ClearCandidate();
-                return;
+                return true;
             }
 
             if (input.CommandPressed)
             {
                 _placer.Cancel();
-                return;
+                return true;
             }
 
             // Move before placing so a click lands where the player sees the ghost in this very frame.
@@ -53,6 +57,8 @@ namespace StrategyDemo.Gameplay
             {
                 _placer.TryPlace(input.ModifierHeld);
             }
+
+            return true;
         }
     }
 }

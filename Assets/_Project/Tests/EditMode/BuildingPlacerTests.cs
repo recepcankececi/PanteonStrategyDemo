@@ -17,6 +17,7 @@ namespace StrategyDemo.Tests.EditMode
         private const int Height = 8;
 
         private GridMap _grid;
+        private OccupantRegistry _occupants;
         private RecordingFactory _factory;
         private BuildingPlacer _placer;
         private BuildingDefinition _barracks;
@@ -27,8 +28,9 @@ namespace StrategyDemo.Tests.EditMode
         public void CreatePlacer()
         {
             _grid = new GridMap(Width, Height);
+            _occupants = new OccupantRegistry();
             _factory = new RecordingFactory();
-            _placer = new BuildingPlacer(_grid, _factory);
+            _placer = new BuildingPlacer(_grid, _occupants, _factory);
             _placer.Changed += () => _changedCount++;
             _changedCount = 0;
             _barracks = Definition(new Vector2Int(3, 2));
@@ -45,8 +47,9 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Constructor_NullArgument_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(null, _factory));
-            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, null));
+            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(null, _occupants, _factory));
+            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, null, _factory));
+            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, _occupants, null));
         }
 
         [Test]
@@ -220,12 +223,27 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void TryPlace_FactoryThrows_GivesCellsBackAndRethrows()
         {
-            var placer = new BuildingPlacer(_grid, new ThrowingFactory());
+            var placer = new BuildingPlacer(_grid, _occupants, new ThrowingFactory());
             placer.Begin(_barracks);
             placer.MoveTo(new Vector2Int(2, 2));
 
             Assert.Throws<InvalidOperationException>(() => placer.TryPlace(keepPlacing: false));
             Assert.That(_grid.IsAreaFree(new Vector2Int(2, 2), _barracks.Footprint), Is.True);
+            Assert.That(_occupants.Count, Is.Zero);
+        }
+
+        [Test]
+        public void TryPlace_Valid_RegistersBuildingUnderTheIdWrittenToItsCells()
+        {
+            _placer.Begin(_barracks);
+            _placer.MoveTo(new Vector2Int(2, 2));
+
+            _placer.TryPlace(keepPlacing: false);
+
+            int id = _grid.GetOccupant(new Vector2Int(4, 3));
+            Assert.That(_occupants.TryGet(id, out IBoardOccupant occupant), Is.True);
+            Assert.That(occupant.Origin, Is.EqualTo(new Vector2Int(2, 2)));
+            Assert.That(occupant.Footprint, Is.EqualTo(_barracks.Footprint));
         }
 
         [Test]
@@ -338,7 +356,7 @@ namespace StrategyDemo.Tests.EditMode
 
         private sealed class ThrowingFactory : IBuildingFactory
         {
-            public void Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
+            public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
             {
                 throw new InvalidOperationException("Simulated failure while creating the scene object.");
             }
@@ -350,9 +368,10 @@ namespace StrategyDemo.Tests.EditMode
             public List<(BuildingDefinition Definition, Vector2Int Origin, int OccupantId)> Created { get; } =
                 new List<(BuildingDefinition, Vector2Int, int)>();
 
-            public void Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
+            public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
             {
                 Created.Add((definition, origin, occupantId));
+                return new FakeOccupant(occupantId, origin, definition.Footprint);
             }
         }
     }

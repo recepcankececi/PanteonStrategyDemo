@@ -72,6 +72,17 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
+        public void Building_ContainsPoint_CoversItsWholeImageAndIsStatic()
+        {
+            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1);
+
+            // The test sprite is 3×2 world units with its pivot at the bottom middle: image spans x 4..7, y 2..4.
+            Assert.That(building.ContainsPoint(BoardOrigin + new Vector3(6.5f, 3.9f, 0f)), Is.True);
+            Assert.That(building.ContainsPoint(BoardOrigin + new Vector3(7.5f, 3f, 0f)), Is.False);
+            Assert.That(building.IsMobile, Is.False);
+        }
+
+        [Test]
         public void Building_InitNullDefinition_Throws()
         {
             Building building = _prefabObject.GetComponent<Building>();

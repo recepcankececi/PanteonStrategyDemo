@@ -76,7 +76,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -90,7 +90,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 64
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -111,10 +111,10 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 4096
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -156,11 +156,11 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 114
-        y: 121
-        width: 71
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -177,12 +177,12 @@ TextureImporter:
       name: Lancer_Idle_1
       rect:
         serializedVersion: 2
-        x: 433
+        x: 434
         y: 122
-        width: 29
-        height: 151
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -199,12 +199,12 @@ TextureImporter:
       name: Lancer_Idle_2
       rect:
         serializedVersion: 2
-        x: 457
-        y: 121
-        width: 48
-        height: 76
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 754
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -221,12 +221,12 @@ TextureImporter:
       name: Lancer_Idle_3
       rect:
         serializedVersion: 2
-        x: 754
+        x: 1074
         y: 122
-        width: 28
-        height: 151
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -243,12 +243,12 @@ TextureImporter:
       name: Lancer_Idle_4
       rect:
         serializedVersion: 2
-        x: 778
-        y: 121
-        width: 47
-        height: 76
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 1394
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -265,12 +265,12 @@ TextureImporter:
       name: Lancer_Idle_5
       rect:
         serializedVersion: 2
-        x: 1074
-        y: 121
+        x: 1714
+        y: 122
         width: 70
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -287,12 +287,12 @@ TextureImporter:
       name: Lancer_Idle_6
       rect:
         serializedVersion: 2
-        x: 1395
-        y: 121
-        width: 68
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 2034
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -309,12 +309,12 @@ TextureImporter:
       name: Lancer_Idle_7
       rect:
         serializedVersion: 2
-        x: 1716
-        y: 121
-        width: 67
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 2354
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -331,12 +331,12 @@ TextureImporter:
       name: Lancer_Idle_8
       rect:
         serializedVersion: 2
-        x: 2038
-        y: 121
-        width: 64
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 2674
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -353,12 +353,12 @@ TextureImporter:
       name: Lancer_Idle_9
       rect:
         serializedVersion: 2
-        x: 2358
-        y: 121
-        width: 63
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 2994
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -375,12 +375,12 @@ TextureImporter:
       name: Lancer_Idle_10
       rect:
         serializedVersion: 2
-        x: 2677
-        y: 121
-        width: 64
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 3314
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -397,12 +397,12 @@ TextureImporter:
       name: Lancer_Idle_11
       rect:
         serializedVersion: 2
-        x: 2996
-        y: 121
-        width: 66
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 3634
+        y: 122
+        width: 70
+        height: 150
+      alignment: 9
+      pivot: {x: 0.6571429, y: -0.10666667}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -415,55 +415,11 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
-    - serializedVersion: 2
-      name: Lancer_Idle_12
-      rect:
-        serializedVersion: 2
-        x: 3315
-        y: 121
-        width: 68
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: b101590d858e03490800000000000000
-      internalID: -7768453889059909605
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Lancer_Idle_13
-      rect:
-        serializedVersion: 2
-        x: 3634
-        y: 121
-        width: 70
-        height: 152
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 5524d2cf092ba2b40800000000000000
-      internalID: 5416337837642302037
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: c52a982cd92c87f44af4cb8e2bbe4032
     internalID: 0
     vertices: []
     indices: 

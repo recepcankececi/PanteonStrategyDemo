@@ -25,7 +25,7 @@ namespace StrategyDemo.Tests.EditMode
             _board = new TestBoard(Vector3.zero, 10, 8);
             _house = _board.Definition("House", new Vector2Int(2, 2));
             _grid = new GridMap(10, 8);
-            _placer = new BuildingPlacer(_grid, new NullBuildingFactory());
+            _placer = new BuildingPlacer(_grid, new OccupantRegistry(), new NullBuildingFactory());
             _handler = new PlacementInputHandler(_placer, _board.View);
         }
 
@@ -140,12 +140,36 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void NotPlacing_InputIsIgnored()
+        public void NotPlacing_InputIsIgnoredAndNotConsumed()
         {
-            _handler.Handle(Frame(new Vector3(5f, 4f, 0f), select: true));
+            bool consumed = _handler.Handle(Frame(new Vector3(5f, 4f, 0f), select: true));
 
+            Assert.That(consumed, Is.False, "Selection must get the click when nothing is being placed.");
             Assert.That(_placer.IsPlacing, Is.False);
             Assert.That(_grid.IsAreaFree(Vector2Int.zero, new Vector2Int(10, 8)), Is.True);
+        }
+
+        [Test]
+        public void Placing_ClickThatPlaces_IsConsumed()
+        {
+            _placer.Begin(_house);
+
+            bool consumed = _handler.Handle(Frame(new Vector3(5f, 4f, 0f), select: true));
+
+            Assert.That(consumed, Is.True, "The placing click must not also select the new building.");
+        }
+
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        [TestCase(false, false, true)]
+        [TestCase(false, false, false)]
+        public void Placing_AnyFrame_IsConsumed(bool overUi, bool command, bool cancel)
+        {
+            _placer.Begin(_house);
+
+            bool consumed = _handler.Handle(Frame(new Vector3(5f, 4f, 0f), overUi: overUi, command: command, cancel: cancel));
+
+            Assert.That(consumed, Is.True);
         }
 
         private static PointerInput Frame(Vector3 world, bool overUi = false, bool select = false, bool command = false, bool cancel = false, bool modifier = false)

@@ -19,3 +19,11 @@ MonoBehaviour:
   _attackRange: 3
   _attackInterval: 1
   _moveSpeed: 3
+  _idleFrames:
+  - {fileID: 7257567913506708742, guid: bf0ee1a35cb634b4e9e732a5180f8841, type: 3}
+  - {fileID: -7989796299022447421, guid: bf0ee1a35cb634b4e9e732a5180f8841, type: 3}
+  - {fileID: 7725435616784934678, guid: bf0ee1a35cb634b4e9e732a5180f8841, type: 3}
+  - {fileID: -1293103732667120055, guid: bf0ee1a35cb634b4e9e732a5180f8841, type: 3}
+  - {fileID: 427913027731640163, guid: bf0ee1a35cb634b4e9e732a5180f8841, type: 3}
+  - {fileID: -9045297040117572726, guid: bf0ee1a35cb634b4e9e732a5180f8841, type: 3}
+  _idleFramesPerSecond: 10

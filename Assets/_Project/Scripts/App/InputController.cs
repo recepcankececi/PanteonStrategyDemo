@@ -30,11 +30,15 @@ namespace StrategyDemo.App
         private GameInputActions _actions;
         private Camera _camera;
         private PlacementInputHandler _placementInput;
+        private SelectionInputHandler _selectionInput;
 
-        /// <summary>Starts routing input to <paramref name="placementInput"/>, reading the pointer through <paramref name="boardCamera"/>.</summary>
+        /// <summary>
+        /// Starts routing input, reading the pointer through <paramref name="boardCamera"/>. Placement sees each
+        /// frame first; selection gets it only when placement did not consume it.
+        /// </summary>
         /// <exception cref="ArgumentNullException">An argument is null.</exception>
         /// <exception cref="InvalidOperationException">The EventSystem is not assigned.</exception>
-        public void Init(Camera boardCamera, PlacementInputHandler placementInput)
+        public void Init(Camera boardCamera, PlacementInputHandler placementInput, SelectionInputHandler selectionInput)
         {
             if (_eventSystem == null)
             {
@@ -43,6 +47,7 @@ namespace StrategyDemo.App
 
             _camera = boardCamera != null ? boardCamera : throw new ArgumentNullException(nameof(boardCamera));
             _placementInput = placementInput ?? throw new ArgumentNullException(nameof(placementInput));
+            _selectionInput = selectionInput ?? throw new ArgumentNullException(nameof(selectionInput));
         }
 
         private void Awake()
@@ -86,7 +91,11 @@ namespace StrategyDemo.App
                 gameplay.Command.WasPressedThisFrame(),
                 gameplay.Cancel.WasPressedThisFrame(),
                 gameplay.Modifier.IsPressed());
-            _placementInput.Handle(input);
+            // While placing, a click places (or cancels) and must not also select what is under it.
+            if (!_placementInput.Handle(input))
+            {
+                _selectionInput.Handle(input);
+            }
         }
     }
 }

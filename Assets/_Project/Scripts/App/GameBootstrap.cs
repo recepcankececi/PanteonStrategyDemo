@@ -22,6 +22,13 @@ namespace StrategyDemo.App
         [SerializeField, Tooltip("Board container placed buildings are parented under.")]
         private Transform _buildingsRoot;
         [SerializeField] private PlacementGhost _placementGhost;
+        [SerializeField] private Unit _unitPrefab;
+        [SerializeField, Tooltip("Board container produced soldiers are parented under.")]
+        private Transform _unitsRoot;
+        [SerializeField, Tooltip("Board container pooled (inactive) soldiers wait under.")]
+        private Transform _unitPoolRoot;
+        [SerializeField] private SelectionHighlight _selectionHighlight;
+        [SerializeField] private InfoPanel _infoPanel;
         [SerializeField] private InputController _inputController;
 
         private BuildingPlacer _placer;
@@ -30,7 +37,9 @@ namespace StrategyDemo.App
         {
             // Fail at start-up with a clear message instead of a NullReferenceException deep in a system.
             if (_gridConfig == null || _buildingCatalog == null || _gridView == null || _cameraFitter == null || _productionMenu == null
-                || _buildingPrefab == null || _buildingsRoot == null || _placementGhost == null || _inputController == null)
+                || _buildingPrefab == null || _buildingsRoot == null || _placementGhost == null || _unitPrefab == null
+                || _unitsRoot == null || _unitPoolRoot == null || _selectionHighlight == null || _infoPanel == null
+                || _inputController == null)
             {
                 Debug.LogError($"{nameof(GameBootstrap)} has unassigned references; the game cannot start.", this);
                 enabled = false;
@@ -44,11 +53,23 @@ namespace StrategyDemo.App
                 _cameraFitter.Init(_gridView.WorldBounds);
                 _productionMenu.Init(_buildingCatalog);
 
+                // One registry for buildings and soldiers: both hold grid cells, and a clicked cell must lead to either.
+                var occupants = new OccupantRegistry();
                 var buildingFactory = new BuildingFactory(_buildingPrefab, _buildingsRoot, _gridView);
-                _placer = new BuildingPlacer(gridMap, buildingFactory);
+                _placer = new BuildingPlacer(gridMap, occupants, buildingFactory);
                 _placementGhost.Init(_placer, _gridView);
+
+                var unitFactory = new UnitFactory(_unitPrefab, _unitsRoot, _unitPoolRoot, _gridView);
+                var unitProducer = new UnitProducer(gridMap, occupants, unitFactory);
+                var selection = new SelectionService(gridMap, occupants);
+                _selectionHighlight.Init(selection, _gridView);
+                _infoPanel.Init(selection, unitProducer);
+
                 // The fitter's camera is the one drawing the board, so it is the one that maps the pointer.
-                _inputController.Init(_cameraFitter.GetComponent<Camera>(), new PlacementInputHandler(_placer, _gridView));
+                _inputController.Init(
+                    _cameraFitter.GetComponent<Camera>(),
+                    new PlacementInputHandler(_placer, _gridView),
+                    new SelectionInputHandler(selection, _gridView));
             }
             catch (Exception exception)
             {

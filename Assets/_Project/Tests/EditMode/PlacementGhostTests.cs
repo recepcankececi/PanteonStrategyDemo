@@ -29,7 +29,7 @@ namespace StrategyDemo.Tests.EditMode
             _board = new TestBoard(BoardOrigin, 10, 8);
             _barracks = _board.Definition("Barracks", new Vector2Int(3, 2));
             _house = _board.Definition("House", new Vector2Int(2, 2));
-            _placer = new BuildingPlacer(new GridMap(10, 8), new NullBuildingFactory());
+            _placer = new BuildingPlacer(new GridMap(10, 8), new OccupantRegistry(), new NullBuildingFactory());
 
             _ghostObject = new GameObject(nameof(PlacementGhostTests));
             _buildingRenderer = _ghostObject.AddComponent<SpriteRenderer>();

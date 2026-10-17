@@ -58,7 +58,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -72,7 +72,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 64
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -93,10 +93,10 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 4096
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -137,12 +137,12 @@ TextureImporter:
       name: Warrior_Idle_0
       rect:
         serializedVersion: 2
-        x: 61
-        y: 54
-        width: 81
-        height: 91
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 59
+        y: 55
+        width: 84
+        height: 89
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -159,12 +159,12 @@ TextureImporter:
       name: Warrior_Idle_1
       rect:
         serializedVersion: 2
-        x: 253
-        y: 54
-        width: 81
-        height: 91
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 251
+        y: 55
+        width: 84
+        height: 89
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -181,12 +181,12 @@ TextureImporter:
       name: Warrior_Idle_2
       rect:
         serializedVersion: 2
-        x: 445
-        y: 54
-        width: 81
-        height: 90
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 443
+        y: 55
+        width: 84
+        height: 89
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -204,11 +204,11 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 635
-        y: 54
-        width: 83
-        height: 88
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        y: 55
+        width: 84
+        height: 89
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -225,12 +225,12 @@ TextureImporter:
       name: Warrior_Idle_4
       rect:
         serializedVersion: 2
-        x: 826
-        y: 54
-        width: 85
-        height: 87
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 827
+        y: 55
+        width: 84
+        height: 89
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -248,11 +248,11 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 1019
-        y: 54
-        width: 85
-        height: 87
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        y: 55
+        width: 84
+        height: 89
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -270,11 +270,11 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 1211
-        y: 54
+        y: 55
         width: 84
         height: 89
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -291,12 +291,12 @@ TextureImporter:
       name: Warrior_Idle_7
       rect:
         serializedVersion: 2
-        x: 1404
-        y: 54
-        width: 82
-        height: 90
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 1403
+        y: 55
+        width: 84
+        height: 89
+      alignment: 9
+      pivot: {x: 0.44047618, y: -0.17977528}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -313,7 +313,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: a7824d3d309a438478ef8716fcbdbe06
     internalID: 0
     vertices: []
     indices: 

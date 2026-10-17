@@ -59,6 +59,51 @@ namespace StrategyDemo.Tests.EditMode
             return definition;
         }
 
+        /// <summary>Creates a producing building definition; destroyed with the board.</summary>
+        public BuildingDefinition Producer(string assetName, Vector2Int footprint, Vector2Int spawnOffset, params UnitDefinition[] units)
+        {
+            BuildingDefinition definition = Definition(assetName, footprint);
+            var serialized = new SerializedObject(definition);
+            serialized.FindProperty("_spawnOffset").vector2IntValue = spawnOffset;
+            SerializedProperty list = serialized.FindProperty("_producibleUnits");
+            list.arraySize = units.Length;
+            for (int i = 0; i < units.Length; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue = units[i];
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return definition;
+        }
+
+        /// <summary>Creates a soldier definition with <paramref name="frameCount"/> idle frames; destroyed with the board.</summary>
+        public UnitDefinition Unit(string assetName, int damage = 1, int frameCount = 2)
+        {
+            // At least one pixel wide: a texture cannot be empty, even for a definition without frames.
+            var texture = new Texture2D(Mathf.Max(frameCount, 1), 1) { name = assetName };
+            _owned.Add(texture);
+            var definition = ScriptableObject.CreateInstance<UnitDefinition>();
+            definition.name = assetName;
+            _owned.Add(definition);
+
+            var serialized = new SerializedObject(definition);
+            serialized.FindProperty("_displayName").stringValue = assetName;
+            serialized.FindProperty("_damage").intValue = damage;
+            SerializedProperty frames = serialized.FindProperty("_idleFrames");
+            frames.arraySize = frameCount;
+            for (int i = 0; i < frameCount; i++)
+            {
+                Sprite frame = Sprite.Create(texture, new Rect(i, 0f, 1f, 1f), new Vector2(0.5f, 0f), 1f);
+                frame.name = $"{assetName}_{i}";
+                _owned.Add(frame);
+                frames.GetArrayElementAtIndex(i).objectReferenceValue = frame;
+            }
+
+            serialized.FindProperty("_icon").objectReferenceValue = frameCount > 0 ? frames.GetArrayElementAtIndex(0).objectReferenceValue : null;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return definition;
+        }
+
         public void Dispose()
         {
             foreach (Object owned in _owned)

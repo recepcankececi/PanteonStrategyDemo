@@ -10,6 +10,7 @@ namespace StrategyDemo.Gameplay
     public interface IBuildingFactory
     {
         /// <summary>Creates the scene object for a building that already holds its cells in the grid.</summary>
-        void Create(BuildingDefinition definition, Vector2Int origin, int occupantId);
+        /// <returns>The created building; never null.</returns>
+        IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId);
     }
 }
