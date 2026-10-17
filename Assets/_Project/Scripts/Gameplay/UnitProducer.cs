@@ -12,29 +12,34 @@ namespace StrategyDemo.Gameplay
     /// </summary>
     /// <remarks>
     /// The fallback search never crosses another building, so a soldier is never put in a pocket walled off from its
-    /// producer (it would be stuck there once movement arrives in M5). Soldiers hold their cell in the <see cref="GridMap"/> like buildings do, so two soldiers never stand on one
-    /// cell, a building can never be placed on a soldier, and selection finds a soldier the same way it finds a
-    /// building.
+    /// producer, where it could never walk out. Soldiers hold their cell in the <see cref="GridMap"/> like buildings
+    /// do, so a building can never be placed on a soldier and selection finds a soldier the same way it finds a
+    /// building. A new soldier also reserves its cell (<see cref="CellReservations"/>, ADR-008) and never appears on a
+    /// cell another soldier is walking to, so two soldiers never end up on one cell.
     /// </remarks>
     public sealed class UnitProducer
     {
         private readonly GridMap _grid;
         private readonly OccupantRegistry _occupants;
+        private readonly CellReservations _reservations;
         private readonly IUnitFactory _factory;
         private readonly FreeCellSearch _freeCellSearch;
         // Cached once: a method group converted to a delegate on every call would allocate.
         private readonly Predicate<int> _canSpawnSearchPassThrough;
+        private readonly Predicate<Vector2Int> _isFreeSpawnCell;
         // Grid id of the building producing right now; the spawn search may spread through its own cells.
         private int _producerId;
 
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-        public UnitProducer(GridMap grid, OccupantRegistry occupants, IUnitFactory factory)
+        public UnitProducer(GridMap grid, OccupantRegistry occupants, CellReservations reservations, IUnitFactory factory)
         {
             _grid = grid ?? throw new ArgumentNullException(nameof(grid));
             _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
+            _reservations = reservations ?? throw new ArgumentNullException(nameof(reservations));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _freeCellSearch = new FreeCellSearch(grid);
             _canSpawnSearchPassThrough = CanSpawnSearchPassThrough;
+            _isFreeSpawnCell = IsFreeSpawnCell;
         }
 
         /// <summary>
@@ -76,7 +81,7 @@ namespace StrategyDemo.Gameplay
 
             // The producer's cells are passable so a taken or off-board spawn cell still leads around the building.
             _producerId = _grid.IsInside(producerOrigin) ? _grid.GetOccupant(producerOrigin) : GridMap.EmptyId;
-            if (!_freeCellSearch.TryFindNearest(SpawnCellOf(producer, producerOrigin), _canSpawnSearchPassThrough, out producedAt))
+            if (!_freeCellSearch.TryFindNearest(SpawnCellOf(producer, producerOrigin), _canSpawnSearchPassThrough, _isFreeSpawnCell, out producedAt))
             {
                 return false;
             }
@@ -94,7 +99,16 @@ namespace StrategyDemo.Gameplay
                 throw;
             }
 
+            // A standing soldier reserves the cell it stands on (ADR-008).
+            _reservations.Reserve(producedAt, occupantId);
+
             return true;
+        }
+
+        private bool IsFreeSpawnCell(Vector2Int cell)
+        {
+            // Empty now and not the destination of a soldier on its way there.
+            return _grid.GetOccupant(cell) == GridMap.EmptyId && _reservations.OwnerOf(cell) == GridMap.EmptyId;
         }
 
         private bool CanSpawnSearchPassThrough(int occupantId)

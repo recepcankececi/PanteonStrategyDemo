@@ -1,4 +1,4 @@
-// Board sprites that are not objects: the ground tile and the white cell used for highlights.
+// Board sprites that are not objects: the ground tile, the board's closing edge and the white cell used for highlights.
 'use strict';
 
 const C = require('./palette');
@@ -24,6 +24,19 @@ function ground() {
 }
 
 /**
+ * The grid line the ground tiles leave out: the board's right and bottom edges (each tile draws only its top and left
+ * lines). Unity draws it 9-sliced over the whole board with a 2 px border (the line and one clear pixel inside it,
+ * BoardEdgeSliceBorder in GeneratedArtImporter), so the line stays 1 px at any board size and matches the tile's line
+ * exactly; the transparent centre stretches without sampling the line.
+ */
+function boardEdge() {
+  return svg(CELL, CELL, [
+    rect(CELL - 1, 0, 1, CELL, '#000', 'opacity="0.14"'),
+    rect(0, CELL - 1, CELL - 1, 1, '#000', 'opacity="0.14"'),
+  ].join('\n'));
+}
+
+/**
  * White cell: 2 px opaque frame and a semi-transparent fill. White so a SpriteRenderer.color tint shows its true
  * colour (green/red placement preview, yellow selection); tiled once per cell under a footprint.
  */
@@ -37,4 +50,5 @@ function cellHighlight() {
 module.exports = [
   { name: 'Ground', cells: [1, 1], build: ground },
   { name: 'CellHighlight', cells: [1, 1], build: cellHighlight },
+  { name: 'BoardEdge', cells: [1, 1], build: boardEdge },
 ];

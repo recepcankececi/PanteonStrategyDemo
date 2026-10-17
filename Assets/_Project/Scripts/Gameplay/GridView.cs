@@ -15,15 +15,21 @@ namespace StrategyDemo.Gameplay
         [SerializeField, Tooltip("Tiled one-cell ground sprite stretched over the whole board; its pivot must be centred.")]
         private SpriteRenderer _ground;
 
+        [SerializeField, Tooltip("Sliced frame drawing the grid line on the board's right and bottom edges; centred pivot.")]
+        private SpriteRenderer _edge;
+
         // Cached so bounds, ground and conversions always agree, even if the transform is touched later.
         private Vector3 _origin;
 
         /// <summary>World rectangle covered by the board. Valid after <see cref="Init"/>.</summary>
         public Rect WorldBounds { get; private set; }
 
+        /// <summary>Board size in cells (columns, rows). Valid after <see cref="Init"/>.</summary>
+        public Vector2Int BoardSize { get; private set; }
+
         /// <summary>Sizes the ground to the board described by <paramref name="config"/>.</summary>
         /// <exception cref="ArgumentNullException"><paramref name="config"/> is null.</exception>
-        /// <exception cref="InvalidOperationException">The ground renderer is not assigned.</exception>
+        /// <exception cref="InvalidOperationException">The ground or edge renderer is not assigned.</exception>
         public void Init(GridConfig config)
         {
             if (config == null)
@@ -31,12 +37,13 @@ namespace StrategyDemo.Gameplay
                 throw new ArgumentNullException(nameof(config));
             }
 
-            if (_ground == null)
+            if (_ground == null || _edge == null)
             {
-                throw new InvalidOperationException($"{nameof(GridView)} on '{name}' has no ground renderer assigned.");
+                throw new InvalidOperationException($"{nameof(GridView)} on '{name}' has no ground or edge renderer assigned.");
             }
 
             _origin = transform.position;
+            BoardSize = new Vector2Int(config.Width, config.Height);
             Vector2 boardSize = new Vector2(config.Width, config.Height) * GridConfig.CellWorldSize;
             WorldBounds = new Rect(_origin, boardSize);
 
@@ -45,6 +52,10 @@ namespace StrategyDemo.Gameplay
             _ground.size = boardSize;
             Vector2 center = WorldBounds.center;
             _ground.transform.position = new Vector3(center.x, center.y, _ground.transform.position.z);
+            // Each tile draws its line on its top and left edges only, so the board's right and bottom edges would
+            // have none. A sliced frame (1 px border, line on its right and bottom) closes them at any board size.
+            _edge.size = boardSize;
+            _edge.transform.position = new Vector3(center.x, center.y, _edge.transform.position.z);
         }
 
         /// <summary>World position of the centre of <paramref name="cell"/>.</summary>

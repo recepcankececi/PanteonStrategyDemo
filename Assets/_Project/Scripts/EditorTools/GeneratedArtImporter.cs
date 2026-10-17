@@ -11,7 +11,8 @@ namespace StrategyDemo.EditorTools
     /// <remarks>
     /// Board sprites (buildings, soldiers, ground, cell highlight) use one cell = one world unit and a centred pivot,
     /// so a building's sprite covers exactly its footprint (ADR-007). UI sprites use the Canvas reference density and
-    /// a fixed 9-slice border. Filtering is bilinear: the art is vector, drawn at non-integer zoom and rotated.
+    /// a fixed 9-slice border; the board edge is the one board sprite with a 9-slice border. Filtering is
+    /// bilinear: the art is vector, drawn at non-integer zoom and rotated.
     /// </remarks>
     public sealed class GeneratedArtImporter : AssetPostprocessor
     {
@@ -24,6 +25,16 @@ namespace StrategyDemo.EditorTools
         /// <summary>The ground tile; the only texture that repeats, so the only one that wraps.</summary>
         public const string GroundPath = RootFolder + "Board/Ground.png";
 
+        /// <summary>The board's closing edge line; the only board sprite drawn 9-sliced.</summary>
+        public const string BoardEdgePath = RootFolder + "Board/BoardEdge.png";
+
+        /// <summary>
+        /// 9-slice border of <see cref="BoardEdgePath"/>: the 1 px line plus one transparent pixel inside it. The border
+        /// is drawn at its own size, so the line never stretches; the extra pixel keeps bilinear filtering in the
+        /// stretched centre from sampling the line and smearing it inwards.
+        /// </summary>
+        public const int BoardEdgeSliceBorder = 2;
+
         /// <summary>Pixels per unit of board sprites; equals <c>GridConfig.CellPixelSize</c> (test-enforced).</summary>
         public const int BoardPixelsPerUnit = 64;
 
@@ -34,12 +45,22 @@ namespace StrategyDemo.EditorTools
         public const int UiSliceBorder = 16;
 
         // Bump when the rules below change: Unity then re-imports every texture this postprocessor handles.
-        private const uint Version = 1;
+        private const uint Version = 3;
 
         /// <inheritdoc/>
         public override uint GetVersion()
         {
             return Version;
+        }
+
+        private static Vector4 SliceBorderFor(string path, bool isUi)
+        {
+            if (isUi)
+            {
+                return Vector4.one * UiSliceBorder;
+            }
+
+            return path == BoardEdgePath ? Vector4.one * BoardEdgeSliceBorder : Vector4.zero;
         }
 
         private void OnPreprocessTexture()
@@ -55,7 +76,7 @@ namespace StrategyDemo.EditorTools
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
             importer.spritePixelsPerUnit = isUi ? UiPixelsPerUnit : BoardPixelsPerUnit;
-            importer.spriteBorder = isUi ? new Vector4(UiSliceBorder, UiSliceBorder, UiSliceBorder, UiSliceBorder) : Vector4.zero;
+            importer.spriteBorder = SliceBorderFor(assetPath, isUi);
             importer.mipmapEnabled = false;
             importer.alphaIsTransparency = true;
             importer.filterMode = FilterMode.Bilinear;

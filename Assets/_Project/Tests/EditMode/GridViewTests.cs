@@ -17,6 +17,7 @@ namespace StrategyDemo.Tests.EditMode
 
         private GameObject _gridObject;
         private SpriteRenderer _ground;
+        private SpriteRenderer _edge;
         private GridView _view;
         private GridConfig _config;
 
@@ -29,10 +30,15 @@ namespace StrategyDemo.Tests.EditMode
             groundObject.transform.SetParent(_gridObject.transform, false);
             _ground = groundObject.AddComponent<SpriteRenderer>();
             _ground.drawMode = SpriteDrawMode.Tiled;
+            var edgeObject = new GameObject("BoardEdge");
+            edgeObject.transform.SetParent(_gridObject.transform, false);
+            _edge = edgeObject.AddComponent<SpriteRenderer>();
+            _edge.drawMode = SpriteDrawMode.Sliced;
 
             _view = _gridObject.AddComponent<GridView>();
             var serializedView = new SerializedObject(_view);
             serializedView.FindProperty("_ground").objectReferenceValue = _ground;
+            serializedView.FindProperty("_edge").objectReferenceValue = _edge;
             serializedView.ApplyModifiedPropertiesWithoutUndo();
 
             _config = ScriptableObject.CreateInstance<GridConfig>();
@@ -81,6 +87,35 @@ namespace StrategyDemo.Tests.EditMode
             serializedView.ApplyModifiedPropertiesWithoutUndo();
 
             Assert.Throws<System.InvalidOperationException>(() => _view.Init(_config));
+        }
+
+        [Test]
+        public void Init_EdgeNotAssigned_Throws()
+        {
+            var serializedView = new SerializedObject(_view);
+            serializedView.FindProperty("_edge").objectReferenceValue = null;
+            serializedView.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.Throws<System.InvalidOperationException>(() => _view.Init(_config));
+        }
+
+        [Test]
+        public void Init_EdgeFrameCoversWholeBoard()
+        {
+            _view.Init(_config);
+
+            // Same size and centre as the ground: its right and bottom lines then sit exactly on the board's edges.
+            Assert.That(_edge.size, Is.EqualTo(new Vector2(Width, Height)));
+            Assert.That(_edge.transform.position.x, Is.EqualTo(BoardOrigin.x + Width * 0.5f).Within(Tolerance));
+            Assert.That(_edge.transform.position.y, Is.EqualTo(BoardOrigin.y + Height * 0.5f).Within(Tolerance));
+        }
+
+        [Test]
+        public void Init_BoardSize_IsConfigSizeInCells()
+        {
+            _view.Init(_config);
+
+            Assert.That(_view.BoardSize, Is.EqualTo(new Vector2Int(Width, Height)));
         }
 
         [Test]

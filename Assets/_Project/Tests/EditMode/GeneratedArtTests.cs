@@ -20,6 +20,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string UnitsFolder = GeneratedArtImporter.RootFolder + "Units";
         private const string UiFolder = GeneratedArtImporter.RootFolder + "UI";
         private const string CellHighlightPath = GeneratedArtImporter.RootFolder + "Board/CellHighlight.png";
+        private const string BoardEdgePath = GeneratedArtImporter.BoardEdgePath;
         private const string WorldAtlasPath = "Assets/_Project/Art/Atlases/WorldAtlas.spriteatlasv2";
         private const string UiAtlasPath = "Assets/_Project/Art/Atlases/UIAtlas.spriteatlasv2";
         private const string CatalogPath = "Assets/_Project/ScriptableObjects/BuildingCatalog.asset";
@@ -55,6 +56,35 @@ namespace StrategyDemo.Tests.EditMode
                 Assert.That(settings.spriteMeshType, Is.EqualTo(SpriteMeshType.FullRect), path);
                 Assert.That(importer.filterMode, Is.EqualTo(FilterMode.Bilinear), path);
                 Assert.That(importer.mipmapEnabled, Is.False, path);
+            }
+        }
+
+        [Test]
+        public void BoardEdge_IsSlicedFrameWithOnePixelLinesOnRightAndBottomOnly()
+        {
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(BoardEdgePath);
+            Assert.That(sprite, Is.Not.Null);
+            Assert.That(sprite.border, Is.EqualTo(Vector4.one * GeneratedArtImporter.BoardEdgeSliceBorder));
+
+            // Read the pixels from the PNG itself: the imported texture is not CPU-readable.
+            var texture = new Texture2D(2, 2);
+            try
+            {
+                texture.LoadImage(File.ReadAllBytes(BoardEdgePath));
+                int last = texture.width - 1;
+                // Texture rows start at the bottom: y = 0 is the bottom edge.
+                Assert.That(texture.GetPixel(last, last / 2).a, Is.GreaterThan(0f), "Right edge line.");
+                Assert.That(texture.GetPixel(last / 2, 0).a, Is.GreaterThan(0f), "Bottom edge line.");
+                Assert.That(texture.GetPixel(0, last / 2).a, Is.Zero, "Left edge stays clear: the ground tile draws it.");
+                Assert.That(texture.GetPixel(last / 2, last).a, Is.Zero, "Top edge stays clear: the ground tile draws it.");
+                Assert.That(texture.GetPixel(last / 2, last / 2).a, Is.Zero, "The stretched centre is transparent.");
+                // The pixel inside each line is clear, so bilinear sampling of the stretched centre never reaches the line.
+                Assert.That(texture.GetPixel(last - 1, last / 2).a, Is.Zero, "Clear pixel inside the right line.");
+                Assert.That(texture.GetPixel(last / 2, 1).a, Is.Zero, "Clear pixel inside the bottom line.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(texture);
             }
         }
 
@@ -127,9 +157,10 @@ namespace StrategyDemo.Tests.EditMode
         public void WorldAtlas_PacksExactlyTheBoardSpritesInUse()
         {
             // The ground is not packed: it tiles, and bilinear sampling at a tile edge would blend in atlas padding.
-            Assert.That(Packables(WorldAtlasPath), Is.EquivalentTo(new[] { BuildingsFolder, UnitsFolder, CellHighlightPath }));
+            Assert.That(Packables(WorldAtlasPath), Is.EquivalentTo(new[] { BuildingsFolder, UnitsFolder, CellHighlightPath, BoardEdgePath }));
 
-            var used = new HashSet<string> { CellHighlightPath };
+            // The cell highlight (selection, placement, drag box) and the board edge are used by the scene, not by data.
+            var used = new HashSet<string> { CellHighlightPath, BoardEdgePath };
             foreach (BuildingDefinition building in AssetDatabase.LoadAssetAtPath<BuildingCatalog>(CatalogPath).Buildings)
             {
                 used.Add(AssetDatabase.GetAssetPath(building.Sprite));
@@ -142,7 +173,8 @@ namespace StrategyDemo.Tests.EditMode
             }
 
             // Folder entries pack everything inside them, so the folders must hold exactly what the data references.
-            string[] packed = TexturePathsUnder(BuildingsFolder).Concat(TexturePathsUnder(UnitsFolder)).Append(CellHighlightPath).ToArray();
+            string[] packed = TexturePathsUnder(BuildingsFolder).Concat(TexturePathsUnder(UnitsFolder))
+                .Append(CellHighlightPath).Append(BoardEdgePath).ToArray();
             Assert.That(packed, Is.EquivalentTo(used));
         }
 

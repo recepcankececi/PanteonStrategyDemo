@@ -5,7 +5,10 @@ using UnityEngine;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>How one frame of input drives selection: click selects, ground click and Esc deselect, UI clicks are ignored.</summary>
+    /// <summary>
+    /// How frames of input drive selection: click selects, ground click and Esc deselect, UI clicks are ignored, and a
+    /// drag across cells box-selects soldiers on release.
+    /// </summary>
     public class SelectionInputHandlerTests
     {
         private TestBoard _board;
@@ -103,9 +106,91 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_selection.Selected, Is.Null);
         }
 
-        private static PointerInput Frame(Vector3 world, bool overUi = false, bool select = false, bool cancel = false)
+        [Test]
+        public void Drag_AcrossCells_ShowsBoxAndSelectsSoldiersOnRelease()
         {
-            return new PointerInput(world, overUi, select, false, cancel, false);
+            FakeOccupant a = PlaceSoldier(new Vector2Int(0, 0));
+            FakeOccupant b = PlaceSoldier(new Vector2Int(2, 1));
+            PlaceSoldier(new Vector2Int(8, 7));
+
+            _handler.Handle(Frame(new Vector3(0.5f, 0.5f, 0f), select: true, held: true));
+            _handler.Handle(Frame(new Vector3(2.5f, 1.5f, 0f), held: true));
+
+            Assert.That(_handler.IsDragging, Is.True);
+            Assert.That(_handler.DragArea, Is.EqualTo(new RectInt(0, 0, 3, 2)));
+
+            _handler.Handle(Frame(new Vector3(2.5f, 1.5f, 0f), released: true));
+
+            Assert.That(_handler.IsDragging, Is.False);
+            Assert.That(_selection.All, Is.EquivalentTo(new IBoardOccupant[] { a, b }));
+        }
+
+        [Test]
+        public void Drag_DownAndLeft_BoxStillSpansBothCorners()
+        {
+            _handler.Handle(Frame(new Vector3(6.5f, 6.5f, 0f), select: true, held: true));
+            _handler.Handle(Frame(new Vector3(2.5f, 1.5f, 0f), held: true));
+
+            Assert.That(_handler.DragArea, Is.EqualTo(new RectInt(2, 1, 5, 6)));
+        }
+
+        [Test]
+        public void Drag_PastBoardEdge_BoxIsClampedToBoard()
+        {
+            _handler.Handle(Frame(new Vector3(7.5f, 5.5f, 0f), select: true, held: true));
+            _handler.Handle(Frame(new Vector3(30f, 30f, 0f), held: true));
+
+            Assert.That(_handler.DragArea, Is.EqualTo(new RectInt(7, 5, 3, 3)));
+        }
+
+        [Test]
+        public void PressAndReleaseInOneCell_IsAClickNotABox()
+        {
+            FakeOccupant soldier = PlaceSoldier(new Vector2Int(1, 1));
+
+            _handler.Handle(Frame(new Vector3(1.2f, 1.2f, 0f), select: true, held: true));
+            _handler.Handle(Frame(new Vector3(1.8f, 1.8f, 0f), held: true));
+            Assert.That(_handler.IsDragging, Is.False);
+            _handler.Handle(Frame(new Vector3(1.8f, 1.8f, 0f), released: true));
+
+            Assert.That(_selection.All, Is.EqualTo(new IBoardOccupant[] { soldier }));
+        }
+
+        [Test]
+        public void Cancel_WhileDragging_DropsTheBox()
+        {
+            PlaceSoldier(new Vector2Int(1, 1));
+            _handler.Handle(Frame(new Vector3(0.5f, 0.5f, 0f), select: true, held: true));
+            _handler.Handle(Frame(new Vector3(3.5f, 3.5f, 0f), held: true));
+
+            _handler.Handle(Frame(new Vector3(3.5f, 3.5f, 0f), cancel: true, held: true));
+            _handler.Handle(Frame(new Vector3(3.5f, 3.5f, 0f), released: true));
+
+            Assert.That(_handler.IsDragging, Is.False);
+            Assert.That(_selection.All, Is.Empty, "The release after Esc selects nothing.");
+        }
+
+        [Test]
+        public void PressOverUi_NeverStartsABox()
+        {
+            _handler.Handle(Frame(new Vector3(0.5f, 0.5f, 0f), overUi: true, select: true, held: true));
+            _handler.Handle(Frame(new Vector3(4.5f, 4.5f, 0f), held: true));
+
+            Assert.That(_handler.IsDragging, Is.False);
+        }
+
+        private FakeOccupant PlaceSoldier(Vector2Int cell)
+        {
+            var soldier = new FakeOccupant(_registry.NextId(), cell, Vector2Int.one, isMobile: true);
+            _grid.Occupy(cell, Vector2Int.one, soldier.OccupantId);
+            _registry.Add(soldier);
+            return soldier;
+        }
+
+        private static PointerInput Frame(
+            Vector3 world, bool overUi = false, bool select = false, bool cancel = false, bool held = false, bool released = false)
+        {
+            return new PointerInput(world, overUi, select, false, cancel, false, held, released);
         }
     }
 }

@@ -14,12 +14,15 @@ namespace StrategyDemo.Tests.EditMode
 
         private GridMap _grid;
         private FreeCellSearch _search;
+        // "Free" as the spawn search used it before callers could define it: no occupant.
+        private Predicate<Vector2Int> _isEmpty;
 
         [SetUp]
         public void CreateSearch()
         {
             _grid = new GridMap(6, 5);
             _search = new FreeCellSearch(_grid);
+            _isEmpty = cell => _grid.GetOccupant(cell) == GridMap.EmptyId;
         }
 
         [Test]
@@ -31,7 +34,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void TryFindNearest_WantedCellFree_ReturnsIt()
         {
-            Assert.That(_search.TryFindNearest(new Vector2Int(2, 2), AllPass, out Vector2Int found), Is.True);
+            Assert.That(_search.TryFindNearest(new Vector2Int(2, 2), AllPass, _isEmpty, out Vector2Int found), Is.True);
             Assert.That(found, Is.EqualTo(new Vector2Int(2, 2)));
         }
 
@@ -40,7 +43,7 @@ namespace StrategyDemo.Tests.EditMode
         {
             _grid.Occupy(new Vector2Int(2, 2), Vector2Int.one, 1);
 
-            _search.TryFindNearest(new Vector2Int(2, 2), AllPass, out Vector2Int found);
+            _search.TryFindNearest(new Vector2Int(2, 2), AllPass, _isEmpty, out Vector2Int found);
 
             Assert.That(found, Is.EqualTo(new Vector2Int(2, 1)));
         }
@@ -51,7 +54,7 @@ namespace StrategyDemo.Tests.EditMode
             // A 3×3 block centred on (2, 2): every cell one step away is taken too.
             _grid.Occupy(new Vector2Int(1, 1), new Vector2Int(3, 3), 1);
 
-            _search.TryFindNearest(new Vector2Int(2, 2), AllPass, out Vector2Int found);
+            _search.TryFindNearest(new Vector2Int(2, 2), AllPass, _isEmpty, out Vector2Int found);
 
             int steps = Mathf.Abs(found.x - 2) + Mathf.Abs(found.y - 2);
             Assert.That(steps, Is.EqualTo(2));
@@ -61,7 +64,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void TryFindNearest_WantedCellBelowBoard_IsClampedOntoBoard()
         {
-            Assert.That(_search.TryFindNearest(new Vector2Int(3, -1), AllPass, out Vector2Int found), Is.True);
+            Assert.That(_search.TryFindNearest(new Vector2Int(3, -1), AllPass, _isEmpty, out Vector2Int found), Is.True);
             Assert.That(found, Is.EqualTo(new Vector2Int(3, 0)));
         }
 
@@ -70,7 +73,7 @@ namespace StrategyDemo.Tests.EditMode
         {
             _grid.Occupy(new Vector2Int(5, 0), Vector2Int.one, 1);
 
-            _search.TryFindNearest(new Vector2Int(40, -7), AllPass, out Vector2Int found);
+            _search.TryFindNearest(new Vector2Int(40, -7), AllPass, _isEmpty, out Vector2Int found);
 
             Assert.That(found, Is.EqualTo(new Vector2Int(4, 0)));
         }
@@ -81,7 +84,7 @@ namespace StrategyDemo.Tests.EditMode
             _grid.Occupy(Vector2Int.zero, new Vector2Int(6, 4), 1);
             _grid.Occupy(new Vector2Int(0, 4), new Vector2Int(5, 1), 2);
 
-            Assert.That(_search.TryFindNearest(Vector2Int.zero, AllPass, out Vector2Int found), Is.True);
+            Assert.That(_search.TryFindNearest(Vector2Int.zero, AllPass, _isEmpty, out Vector2Int found), Is.True);
             Assert.That(found, Is.EqualTo(new Vector2Int(5, 4)));
         }
 
@@ -90,13 +93,13 @@ namespace StrategyDemo.Tests.EditMode
         {
             _grid.Occupy(Vector2Int.zero, new Vector2Int(6, 5), 1);
 
-            Assert.That(_search.TryFindNearest(new Vector2Int(2, 2), AllPass, out _), Is.False);
+            Assert.That(_search.TryFindNearest(new Vector2Int(2, 2), AllPass, _isEmpty, out _), Is.False);
         }
 
         [Test]
         public void TryFindNearest_NullPredicate_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => _search.TryFindNearest(Vector2Int.zero, null, out _));
+            Assert.Throws<ArgumentNullException>(() => _search.TryFindNearest(Vector2Int.zero, null, _isEmpty, out _));
         }
 
         [Test]
@@ -106,7 +109,7 @@ namespace StrategyDemo.Tests.EditMode
             _grid.Occupy(new Vector2Int(2, 0), new Vector2Int(1, 5), 1);
             _grid.Occupy(Vector2Int.zero, new Vector2Int(2, 5), 2);
 
-            Assert.That(_search.TryFindNearest(Vector2Int.zero, id => id == 2, out _), Is.False, "Cells right of the wall are walled off.");
+            Assert.That(_search.TryFindNearest(Vector2Int.zero, id => id == 2, _isEmpty, out _), Is.False, "Cells right of the wall are walled off.");
         }
 
         [Test]
@@ -124,8 +127,8 @@ namespace StrategyDemo.Tests.EditMode
                 _grid.Occupy(cell, Vector2Int.one, 1);
             }
 
-            _search.TryFindNearest(new Vector2Int(2, 2), AllPass, out Vector2Int crossingWalls);
-            _search.TryFindNearest(new Vector2Int(2, 2), id => id == 2, out Vector2Int found);
+            _search.TryFindNearest(new Vector2Int(2, 2), AllPass, _isEmpty, out Vector2Int crossingWalls);
+            _search.TryFindNearest(new Vector2Int(2, 2), id => id == 2, _isEmpty, out Vector2Int found);
 
             Assert.That(crossingWalls, Is.EqualTo(new Vector2Int(2, 0)), "Precondition: crossing walls reaches the pocket.");
             Assert.That(found, Is.EqualTo(new Vector2Int(0, 2)));
@@ -136,7 +139,7 @@ namespace StrategyDemo.Tests.EditMode
         {
             _grid.Occupy(new Vector2Int(2, 2), Vector2Int.one, 1);
 
-            Assert.That(_search.TryFindNearest(new Vector2Int(2, 2), NothingPasses, out Vector2Int found), Is.True);
+            Assert.That(_search.TryFindNearest(new Vector2Int(2, 2), NothingPasses, _isEmpty, out Vector2Int found), Is.True);
             Assert.That(found, Is.EqualTo(new Vector2Int(2, 1)));
         }
 
@@ -144,12 +147,40 @@ namespace StrategyDemo.Tests.EditMode
         public void TryFindNearest_RepeatedSearches_ReuseBuffersAndStayCorrect()
         {
             // The visited flags of the first search must not leak into the second.
-            _search.TryFindNearest(new Vector2Int(0, 0), AllPass, out _);
+            _search.TryFindNearest(new Vector2Int(0, 0), AllPass, _isEmpty, out _);
             _grid.Occupy(new Vector2Int(4, 4), Vector2Int.one, 1);
 
-            _search.TryFindNearest(new Vector2Int(4, 4), AllPass, out Vector2Int found);
+            _search.TryFindNearest(new Vector2Int(4, 4), AllPass, _isEmpty, out Vector2Int found);
 
             Assert.That(found, Is.EqualTo(new Vector2Int(4, 3)));
+        }
+
+        [Test]
+        public void TryFindNearest_NullIsFree_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => _search.TryFindNearest(Vector2Int.zero, AllPass, null, out _));
+        }
+
+        [Test]
+        public void TryFindNearest_CallerRejectsEmptyCell_ReturnsNearestAcceptedCell()
+        {
+            // E.g. an empty cell another soldier will stop on: not free, but no wall either.
+            var rejected = new Vector2Int(2, 2);
+            Predicate<Vector2Int> isFree = cell => cell != rejected && _isEmpty(cell);
+
+            Assert.That(_search.TryFindNearest(rejected, NothingPasses, isFree, out Vector2Int found), Is.True);
+            Assert.That(found, Is.EqualTo(new Vector2Int(2, 1)));
+        }
+
+        [Test]
+        public void TryFindNearest_RejectedEmptyCellInGap_IsWalkedThrough()
+        {
+            // Column 1 is a wall except (1,0), which is empty but rejected; the free cells beyond it must still be found.
+            _grid.Occupy(new Vector2Int(1, 1), new Vector2Int(1, 4), 9);
+            Predicate<Vector2Int> isFree = cell => cell.x >= 2 && _isEmpty(cell);
+
+            Assert.That(_search.TryFindNearest(new Vector2Int(0, 2), NothingPasses, isFree, out Vector2Int found), Is.True);
+            Assert.That(found, Is.EqualTo(new Vector2Int(2, 0)));
         }
     }
 }

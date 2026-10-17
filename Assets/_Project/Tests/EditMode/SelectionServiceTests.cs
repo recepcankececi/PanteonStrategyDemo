@@ -120,6 +120,74 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_changedCount, Is.EqualTo(2));
         }
 
+        [Test]
+        public void SelectSoldiersIn_Box_SelectsOnlySoldiersInside()
+        {
+            IBoardOccupant inside1 = PlaceSoldier(new Vector2Int(1, 1));
+            IBoardOccupant inside2 = PlaceSoldier(new Vector2Int(3, 2));
+            PlaceSoldier(new Vector2Int(5, 5));
+            Place(new Vector2Int(2, 1), Vector2Int.one);
+
+            _selection.SelectSoldiersIn(new RectInt(1, 1, 3, 2));
+
+            Assert.That(_selection.All, Is.EqualTo(new[] { inside1, inside2 }), "Buildings and soldiers outside are left out.");
+            Assert.That(_selection.Selected, Is.SameAs(inside1));
+            Assert.That(_changedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SelectSoldiersIn_NoSoldierInside_ClearsSelection()
+        {
+            Place(new Vector2Int(2, 2), Vector2Int.one);
+            _selection.SelectAt(new Vector2Int(2, 2));
+
+            _selection.SelectSoldiersIn(new RectInt(0, 0, 5, 5));
+
+            Assert.That(_selection.All, Is.Empty);
+            Assert.That(_changedCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void SelectSoldiersIn_SameSoldiersAgain_DoesNotNotify()
+        {
+            PlaceSoldier(new Vector2Int(1, 1));
+            PlaceSoldier(new Vector2Int(2, 1));
+            _selection.SelectSoldiersIn(new RectInt(0, 0, 4, 4));
+
+            _selection.SelectSoldiersIn(new RectInt(1, 1, 2, 1));
+
+            Assert.That(_changedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SelectSoldiersIn_AreaPartlyOffBoard_UsesTheBoardPart()
+        {
+            IBoardOccupant corner = PlaceSoldier(new Vector2Int(9, 7));
+
+            Assert.DoesNotThrow(() => _selection.SelectSoldiersIn(new RectInt(8, 6, 10, 10)));
+            Assert.That(_selection.All, Is.EqualTo(new[] { corner }));
+        }
+
+        [Test]
+        public void SelectAt_AfterBoxSelection_SelectsOnlyTheClickedObject()
+        {
+            PlaceSoldier(new Vector2Int(1, 1));
+            IBoardOccupant clicked = PlaceSoldier(new Vector2Int(2, 1));
+            _selection.SelectSoldiersIn(new RectInt(0, 0, 4, 4));
+
+            _selection.SelectAt(new Vector2Int(2, 1));
+
+            Assert.That(_selection.All, Is.EqualTo(new[] { clicked }));
+        }
+
+        private IBoardOccupant PlaceSoldier(Vector2Int cell)
+        {
+            var soldier = new FakeOccupant(_registry.NextId(), cell, Vector2Int.one, isMobile: true);
+            _grid.Occupy(cell, Vector2Int.one, soldier.OccupantId);
+            _registry.Add(soldier);
+            return soldier;
+        }
+
         private IBoardOccupant Place(Vector2Int origin, Vector2Int footprint)
         {
             var occupant = new FakeOccupant(_registry.NextId(), origin, footprint);

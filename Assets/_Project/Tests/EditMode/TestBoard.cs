@@ -25,10 +25,14 @@ namespace StrategyDemo.Tests.EditMode
             var ground = new GameObject("Ground").AddComponent<SpriteRenderer>();
             ground.transform.SetParent(_gridObject.transform, false);
             ground.drawMode = SpriteDrawMode.Tiled;
+            var edge = new GameObject("Edge").AddComponent<SpriteRenderer>();
+            edge.transform.SetParent(_gridObject.transform, false);
+            edge.drawMode = SpriteDrawMode.Sliced;
 
             View = _gridObject.AddComponent<GridView>();
             var serializedView = new SerializedObject(View);
             serializedView.FindProperty("_ground").objectReferenceValue = ground;
+            serializedView.FindProperty("_edge").objectReferenceValue = edge;
             serializedView.ApplyModifiedPropertiesWithoutUndo();
 
             _config = ScriptableObject.CreateInstance<GridConfig>();

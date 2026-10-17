@@ -6,7 +6,8 @@ namespace StrategyDemo.Core
 {
     /// <summary>
     /// Finds the free cell closest to a wanted cell with a breadth-first search (BFS), e.g. where a produced
-    /// soldier appears when its building's spawn cell is off the board or taken.
+    /// soldier appears when its building's spawn cell is off the board or taken, or where each soldier of a group
+    /// stops around a move target. The caller decides what "free" means.
     /// </summary>
     /// <remarks>
     /// BFS visits cells ring by ring (every cell 1 step away, then every cell 2 steps away, ...), so the first
@@ -42,17 +43,25 @@ namespace StrategyDemo.Core
         /// </summary>
         /// <param name="wanted">Preferred cell; returned as is when it is on the board and free.</param>
         /// <param name="canPassThrough">
-        /// Which occupant ids the search may spread through. The start cell is always expanded. Pass a cached
-        /// delegate: creating one per call would allocate.
+        /// Which occupant ids the search may spread through; empty cells are always passable and the start cell is
+        /// always expanded. Pass a cached delegate: creating one per call would allocate.
+        /// </param>
+        /// <param name="isFree">
+        /// Whether a cell is an acceptable result, e.g. "empty and not reserved". Cached delegate, as above.
         /// </param>
         /// <param name="found">Nearest free cell; meaningful only when the method returns true.</param>
         /// <returns>False when no free cell can be reached through passable cells (e.g. the board is full).</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="canPassThrough"/> is null.</exception>
-        public bool TryFindNearest(Vector2Int wanted, Predicate<int> canPassThrough, out Vector2Int found)
+        /// <exception cref="ArgumentNullException"><paramref name="canPassThrough"/> or <paramref name="isFree"/> is null.</exception>
+        public bool TryFindNearest(Vector2Int wanted, Predicate<int> canPassThrough, Predicate<Vector2Int> isFree, out Vector2Int found)
         {
             if (canPassThrough == null)
             {
                 throw new ArgumentNullException(nameof(canPassThrough));
+            }
+
+            if (isFree == null)
+            {
+                throw new ArgumentNullException(nameof(isFree));
             }
 
             var start = new Vector2Int(
@@ -66,15 +75,17 @@ namespace StrategyDemo.Core
             while (_frontier.Count > 0)
             {
                 Vector2Int cell = _frontier.Dequeue();
-                int occupant = _grid.GetOccupant(cell);
-                if (occupant == GridMap.EmptyId)
+                if (isFree(cell))
                 {
                     found = cell;
                     return true;
                 }
 
+                int occupant = _grid.GetOccupant(cell);
+
                 // A wall (another building) ends this branch; the start is exempt so a taken spawn cell still spreads.
-                if (cell != start && !canPassThrough(occupant))
+                // An empty cell that is not free (e.g. reserved) is no wall: the search walks on past it.
+                if (cell != start && occupant != GridMap.EmptyId && !canPassThrough(occupant))
                 {
                     continue;
                 }

@@ -30,7 +30,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string ScriptPropertyName = "m_Script";
         private const string PanelSpritePath = "Assets/_Project/Art/Generated/UI/Panel.png";
         private const string GroundSpritePath = "Assets/_Project/Art/Generated/Board/Ground.png";
-
+        private const string BoardEdgeSpritePath = "Assets/_Project/Art/Generated/Board/BoardEdge.png";
         // ADR-001 Karar 7: one Canvas scaled from a 1920x1080 reference, width and height weighted equally.
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
         private const float MatchWidthOrHeight = 0.5f;
@@ -160,6 +160,28 @@ namespace StrategyDemo.Tests.EditMode
             importer.ReadTextureSettings(settings);
             Assert.That(settings.spriteMeshType, Is.EqualTo(SpriteMeshType.FullRect), "Tiled draw mode needs a Full Rect mesh.");
             Assert.That(importer.wrapMode, Is.EqualTo(TextureWrapMode.Repeat), "Bilinear sampling at a tile edge must blend with the opposite edge.");
+        }
+
+        [Test]
+        public void Grid_HasSlicedBoardEdgeAboveGround()
+        {
+            GridView grid = Root(BoardGroup).GetComponentInChildren<GridView>(true);
+            var edge = new SerializedObject(grid).FindProperty("_edge").objectReferenceValue as SpriteRenderer;
+            SpriteRenderer ground = grid.GetComponentInChildren<SpriteRenderer>(true);
+
+            Assert.That(edge, Is.Not.Null);
+            Assert.That(edge.transform.parent, Is.SameAs(grid.transform));
+            Assert.That(AssetDatabase.GetAssetPath(edge.sprite), Is.EqualTo(BoardEdgeSpritePath));
+            Assert.That(edge.drawMode, Is.EqualTo(SpriteDrawMode.Sliced), "Sliced keeps the 1 px line 1 px at any board size.");
+            Assert.That(edge.sortingLayerName, Is.EqualTo(GroundSortingLayer));
+            Assert.That(edge.sortingOrder, Is.GreaterThan(ground.sortingOrder), "Drawn over the ground tiles.");
+            Assert.That(edge.sharedMaterial, Is.SameAs(ground.sharedMaterial));
+        }
+
+        [Test]
+        public void SystemsGroup_HasUnitMovementDriver()
+        {
+            Assert.That(Root(SystemsGroup).GetComponentInChildren<UnitMovementDriver>(true), Is.Not.Null);
         }
 
         [Test]

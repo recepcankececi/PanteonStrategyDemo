@@ -9,8 +9,14 @@ namespace StrategyDemo.Gameplay
     public readonly struct PointerInput
     {
         /// <summary>Creates a frame snapshot.</summary>
-        public PointerInput(Vector3 pointerWorld, bool isOverUi, bool selectPressed, bool commandPressed, bool cancelPressed, bool modifierHeld)
+        /// <remarks>The select hold/release flags come last with defaults: only box selection needs them.</remarks>
+        public PointerInput(
+            Vector3 pointerWorld, bool isOverUi, bool selectPressed, bool commandPressed, bool cancelPressed, bool modifierHeld,
+            bool selectHeld = false, bool selectReleased = false)
         {
+            // A button that went down this frame is down: the "pressed but not held" state cannot exist.
+            SelectHeld = selectHeld || selectPressed;
+            SelectReleased = selectReleased;
             PointerWorld = pointerWorld;
             IsOverUi = isOverUi;
             SelectPressed = selectPressed;
@@ -27,6 +33,12 @@ namespace StrategyDemo.Gameplay
 
         /// <summary>Select (left click) went down this frame.</summary>
         public bool SelectPressed { get; }
+
+        /// <summary>Select (left button) is down this frame, whenever it went down.</summary>
+        public bool SelectHeld { get; }
+
+        /// <summary>Select (left button) went up this frame.</summary>
+        public bool SelectReleased { get; }
 
         /// <summary>Command (right click) went down this frame.</summary>
         public bool CommandPressed { get; }

@@ -16,6 +16,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string MainScenePath = "Assets/_Project/Scenes/Main.unity";
         private const string UnitPrefabPath = "Assets/_Project/Prefabs/Board/Unit.prefab";
         private const string RowPrefabPath = "Assets/_Project/Prefabs/UI/UnitProductionItem.prefab";
+        private const string SelectionMarkerPrefabPath = "Assets/_Project/Prefabs/Board/SelectionMarker.prefab";
         private const string CellHighlightPath = "Assets/_Project/Art/Generated/Board/CellHighlight.png";
         private const string BarracksPath = "Assets/_Project/ScriptableObjects/Buildings/Barracks.asset";
         private const string BoardGroup = "--- Board ---";
@@ -73,7 +74,7 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void Board_HasUnitContainersAndSelectionHighlightOnFx()
+        public void Board_HasUnitContainersAndSelectionMarkersOnFx()
         {
             Transform board = Root(BoardGroup).transform;
             Assert.That(board.Find("Units"), Is.Not.Null);
@@ -81,14 +82,21 @@ namespace StrategyDemo.Tests.EditMode
 
             var highlight = board.GetComponentInChildren<SelectionHighlight>(true);
             Assert.That(highlight, Is.Not.Null);
-            var renderer = highlight.GetComponent<SpriteRenderer>();
-            Assert.That(renderer.sortingLayerName, Is.EqualTo(FxLayer));
-            Assert.That(renderer.drawMode, Is.EqualTo(SpriteDrawMode.Tiled));
-            Assert.That(AssetDatabase.GetAssetPath(renderer.sprite), Is.EqualTo(CellHighlightPath));
-            Assert.That(renderer.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
+            var marker = new SerializedObject(highlight).FindProperty("_markerPrefab").objectReferenceValue as SpriteRenderer;
+            Assert.That(marker, Is.Not.Null);
+            Assert.That(AssetDatabase.GetAssetPath(marker), Is.EqualTo(SelectionMarkerPrefabPath), "Markers are copies of a prefab asset.");
+            var box = board.GetComponentInChildren<SelectionBox>(true);
+            Assert.That(box, Is.Not.Null);
 
             var ghostOverlay = board.Find("PlacementGhost/FootprintOverlay").GetComponent<SpriteRenderer>();
-            Assert.That(renderer.sortingOrder, Is.LessThan(ghostOverlay.sortingOrder), "The placement preview draws over the selection.");
+            foreach (SpriteRenderer renderer in new[] { marker, box.GetComponent<SpriteRenderer>() })
+            {
+                Assert.That(renderer.sortingLayerName, Is.EqualTo(FxLayer), renderer.name);
+                Assert.That(renderer.drawMode, Is.EqualTo(SpriteDrawMode.Tiled), renderer.name);
+                Assert.That(AssetDatabase.GetAssetPath(renderer.sprite), Is.EqualTo(CellHighlightPath), renderer.name);
+                Assert.That(renderer.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial), renderer.name);
+                Assert.That(renderer.sortingOrder, Is.LessThan(ghostOverlay.sortingOrder), "The placement preview draws over the selection.");
+            }
         }
 
         [Test]

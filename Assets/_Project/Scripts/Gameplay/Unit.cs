@@ -5,7 +5,7 @@ using UnityEngine;
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// A soldier standing on the board: its type, the one cell it holds, where it faces and whether it walks.
+    /// A soldier standing on the board: its type, the cell it stands in, where it faces and whether it walks.
     /// Pooled, so <see cref="Init"/> and <see cref="ResetState"/> fully define its state. Runtime state lives here,
     /// never on the shared <see cref="UnitDefinition"/> asset (ADR-001 Karar 4).
     /// </summary>
@@ -41,6 +41,9 @@ namespace StrategyDemo.Gameplay
 
         /// <inheritdoc/>
         public bool IsMobile => true;
+
+        /// <inheritdoc/>
+        public Vector3 WorldCenter => transform.position;
 
         /// <summary>True while the walk cycle plays; false while the soldier stands.</summary>
         public bool IsWalking { get; private set; }
@@ -119,6 +122,16 @@ namespace StrategyDemo.Gameplay
             {
                 ShowStanding();
             }
+        }
+
+        /// <summary>
+        /// Records that the soldier's centre is now in <paramref name="cell"/>. Only <see cref="UnitMovement"/> calls
+        /// this; it also keeps the grid in step (a walking soldier holds its cell there whenever no other soldier does).
+        /// </summary>
+        internal void SetCell(Vector2Int cell)
+        {
+            ThrowIfPooled();
+            Origin = cell;
         }
 
         /// <summary>Clears all state before the soldier goes back to the pool, so reuse cannot leak the old soldier.</summary>

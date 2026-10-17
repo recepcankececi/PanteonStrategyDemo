@@ -28,6 +28,8 @@ namespace StrategyDemo.App
         [SerializeField, Tooltip("Board container pooled (inactive) soldiers wait under.")]
         private Transform _unitPoolRoot;
         [SerializeField] private SelectionHighlight _selectionHighlight;
+        [SerializeField] private SelectionBox _selectionBox;
+        [SerializeField] private UnitMovementDriver _movementDriver;
         [SerializeField] private InfoPanel _infoPanel;
         [SerializeField] private InputController _inputController;
 
@@ -38,8 +40,8 @@ namespace StrategyDemo.App
             // Fail at start-up with a clear message instead of a NullReferenceException deep in a system.
             if (_gridConfig == null || _buildingCatalog == null || _gridView == null || _cameraFitter == null || _productionMenu == null
                 || _buildingPrefab == null || _buildingsRoot == null || _placementGhost == null || _unitPrefab == null
-                || _unitsRoot == null || _unitPoolRoot == null || _selectionHighlight == null || _infoPanel == null
-                || _inputController == null)
+                || _unitsRoot == null || _unitPoolRoot == null || _selectionHighlight == null || _selectionBox == null
+                || _movementDriver == null || _infoPanel == null || _inputController == null)
             {
                 Debug.LogError($"{nameof(GameBootstrap)} has unassigned references; the game cannot start.", this);
                 enabled = false;
@@ -59,17 +61,25 @@ namespace StrategyDemo.App
                 _placer = new BuildingPlacer(gridMap, occupants, buildingFactory);
                 _placementGhost.Init(_placer, _gridView);
 
+                // Where every soldier will stand: shared by production (spawn cells) and movement (stop cells).
+                var reservations = new CellReservations(_gridConfig.Width, _gridConfig.Height);
                 var unitFactory = new UnitFactory(_unitPrefab, _unitsRoot, _unitPoolRoot, _gridView);
-                var unitProducer = new UnitProducer(gridMap, occupants, unitFactory);
+                var unitProducer = new UnitProducer(gridMap, occupants, reservations, unitFactory);
+                var movement = new UnitMovement(gridMap, occupants, reservations, _gridView);
+                _movementDriver.Init(movement);
+
                 var selection = new SelectionService(gridMap, occupants);
-                _selectionHighlight.Init(selection, _gridView);
+                var selectionInput = new SelectionInputHandler(selection, _gridView);
+                _selectionHighlight.Init(selection);
+                _selectionBox.Init(selectionInput, _gridView);
                 _infoPanel.Init(selection, unitProducer);
 
                 // The fitter's camera is the one drawing the board, so it is the one that maps the pointer.
                 _inputController.Init(
                     _cameraFitter.GetComponent<Camera>(),
                     new PlacementInputHandler(_placer, _gridView),
-                    new SelectionInputHandler(selection, _gridView));
+                    selectionInput,
+                    new CommandInputHandler(selection, movement, _gridView));
             }
             catch (Exception exception)
             {

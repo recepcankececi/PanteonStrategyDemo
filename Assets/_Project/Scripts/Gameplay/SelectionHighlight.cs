@@ -1,40 +1,52 @@
 using System;
+using System.Collections.Generic;
+using StrategyDemo.Core;
 using StrategyDemo.Data;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Marks the cells of the selected building or soldier with the tiled cell sprite, in its own colour so it
-    /// never reads as the green/red placement preview. One renderer in the scene, moved and resized on change.
+    /// Marks every selected building or soldier with the tiled cell sprite, in its own colour so it never reads as the
+    /// green/red placement preview. One pooled marker per selected object; markers follow walking soldiers.
     /// </summary>
     /// <remarks>
-    /// The colour is a vertex colour (<see cref="SpriteRenderer.color"/>): the shared material is untouched and
-    /// the highlight batches with the world atlas (ADR-001 Karar 9).
+    /// The colour is a vertex colour (<see cref="SpriteRenderer.color"/>): the shared material is untouched and the
+    /// markers batch with the world atlas (ADR-001 Karar 9). Markers are pooled because a box selection can mark many
+    /// soldiers and is redrawn on every selection change.
     /// </remarks>
-    [RequireComponent(typeof(SpriteRenderer))]
     public sealed class SelectionHighlight : MonoBehaviour
     {
+        [SerializeField, Tooltip("Tiled cell-highlight renderer copied once per selected object; its pivot must be centred.")]
+        private SpriteRenderer _markerPrefab;
         [SerializeField] private Color _tint = new Color(1f, 0.85f, 0.2f, 0.5f);
 
-        private SpriteRenderer _renderer;
+        private readonly List<SpriteRenderer> _markers = new List<SpriteRenderer>();
+        private ObjectPool<SpriteRenderer> _markerPool;
         private SelectionService _selection;
-        private GridView _gridView;
         private bool _isSubscribed;
 
-        /// <summary>Starts following <paramref name="selection"/>; hidden while nothing is selected.</summary>
-        /// <exception cref="ArgumentNullException">An argument is null.</exception>
-        /// <exception cref="InvalidOperationException">Already initialised.</exception>
-        public void Init(SelectionService selection, GridView gridView)
+        /// <summary>Markers currently shown, in selection order. Internal so EditMode tests can read them.</summary>
+        internal IReadOnlyList<SpriteRenderer> Markers => _markers;
+
+        /// <summary>Starts following <paramref name="selection"/>; shows nothing while nothing is selected.</summary>
+        /// <exception cref="ArgumentNullException"><paramref name="selection"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">Already initialised, or the marker prefab is not assigned.</exception>
+        public void Init(SelectionService selection)
         {
             if (_selection != null)
             {
                 throw new InvalidOperationException($"{nameof(SelectionHighlight)} on '{name}' is already initialised.");
             }
 
+            if (_markerPrefab == null)
+            {
+                throw new InvalidOperationException($"{nameof(SelectionHighlight)} on '{name}' has no marker prefab assigned.");
+            }
+
             _selection = selection ?? throw new ArgumentNullException(nameof(selection));
-            _gridView = gridView != null ? gridView : throw new ArgumentNullException(nameof(gridView));
-            _renderer = GetComponent<SpriteRenderer>();
+            _markerPool = new ObjectPool<SpriteRenderer>(CreateMarker, OnMarkerTaken, OnMarkerReleased);
             // Init runs after OnEnable on a scene object, so subscribe here too; the flag prevents doubling.
             if (isActiveAndEnabled)
             {
@@ -44,20 +56,44 @@ namespace StrategyDemo.Gameplay
             Refresh();
         }
 
-        /// <summary>Matches the highlight to the current selection; internal so EditMode tests can call it.</summary>
+        /// <summary>One marker per selected object, sized to its footprint; internal so EditMode tests can call it.</summary>
         internal void Refresh()
         {
-            IBoardOccupant selected = _selection.Selected;
-            _renderer.enabled = selected != null;
-            if (selected == null)
+            for (int i = 0; i < _markers.Count; i++)
             {
-                return;
+                _markerPool.Release(_markers[i]);
             }
 
-            // Pivot is centred: put it in the middle of the covered area, then size the tiling to the footprint.
-            transform.position = _gridView.FootprintCenter(selected.Origin, selected.Footprint);
-            _renderer.size = (Vector2)selected.Footprint * GridConfig.CellWorldSize;
-            _renderer.color = _tint;
+            _markers.Clear();
+            IReadOnlyList<IBoardOccupant> selected = _selection.All;
+            for (int i = 0; i < selected.Count; i++)
+            {
+                SpriteRenderer marker = _markerPool.Get();
+                marker.size = (Vector2)selected[i].Footprint * GridConfig.CellWorldSize;
+                _markers.Add(marker);
+            }
+
+            FollowSelection();
+        }
+
+        /// <summary>Moves each marker onto its object's centre; internal so EditMode tests can call it.</summary>
+        internal void FollowSelection()
+        {
+            // Same order as the selection: Refresh builds the marker list from it, and both change only together.
+            IReadOnlyList<IBoardOccupant> selected = _selection.All;
+            for (int i = 0; i < _markers.Count; i++)
+            {
+                _markers[i].transform.position = selected[i].WorldCenter;
+            }
+        }
+
+        private void LateUpdate()
+        {
+            // After movement ran this frame, so markers sit on the soldiers' final positions.
+            if (_selection != null)
+            {
+                FollowSelection();
+            }
         }
 
         private void OnEnable()
@@ -85,6 +121,24 @@ namespace StrategyDemo.Gameplay
                 _selection.SelectionChanged += Refresh;
                 _isSubscribed = true;
             }
+        }
+
+        private SpriteRenderer CreateMarker()
+        {
+            SpriteRenderer marker = Object.Instantiate(_markerPrefab, transform);
+            marker.name = _markerPrefab.name;
+            marker.color = _tint;
+            return marker;
+        }
+
+        private static void OnMarkerTaken(SpriteRenderer marker)
+        {
+            marker.gameObject.SetActive(true);
+        }
+
+        private static void OnMarkerReleased(SpriteRenderer marker)
+        {
+            marker.gameObject.SetActive(false);
         }
     }
 }

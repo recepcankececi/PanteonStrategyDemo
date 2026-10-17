@@ -22,5 +22,11 @@ namespace StrategyDemo.Gameplay
         /// look past it; a building is a wall.
         /// </summary>
         bool IsMobile { get; }
+
+        /// <summary>
+        /// World position of the occupant's centre (its sprite pivot). Follows a walking soldier smoothly between
+        /// cells, so markers drawn on it (the selection highlight) move with it.
+        /// </summary>
+        Vector3 WorldCenter { get; }
     }
 }

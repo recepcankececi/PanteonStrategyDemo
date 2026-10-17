@@ -56,7 +56,7 @@ namespace StrategyDemo.Tests.EditMode
             _grid = new GridMap(10, 8);
             _registry = new OccupantRegistry();
             _selection = new SelectionService(_grid, _registry);
-            _producer = new UnitProducer(_grid, _registry, new FakeUnitFactory());
+            _producer = new UnitProducer(_grid, _registry, new CellReservations(10, 8), new FakeUnitFactory());
 
             var root = new GameObject("InformationPanel", typeof(RectTransform));
             SceneManager.MoveGameObjectToScene(root, _scene);
@@ -304,6 +304,8 @@ namespace StrategyDemo.Tests.EditMode
             public Vector2Int Footprint => Vector2Int.one;
 
             public bool IsMobile => true;
+
+            public Vector3 WorldCenter => Vector3.zero;
         }
 
         private sealed class FakeUnitFactory : IUnitFactory

@@ -28,6 +28,9 @@ namespace StrategyDemo.Gameplay
         /// <inheritdoc/>
         public bool IsMobile => false;
 
+        /// <inheritdoc/>
+        public Vector3 WorldCenter => transform.position;
+
         /// <summary>Shows <paramref name="definition"/> standing on the area at <paramref name="origin"/>.</summary>
         /// <param name="worldPosition">Centre of the area; the sprite's pivot goes here.</param>
         /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>

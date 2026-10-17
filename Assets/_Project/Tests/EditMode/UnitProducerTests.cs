@@ -25,6 +25,7 @@ namespace StrategyDemo.Tests.EditMode
         private UnitDefinition _soldier;
         private BuildingDefinition _barracks;
         private BuildingDefinition _powerPlant;
+        private CellReservations _reservations;
 
         [SetUp]
         public void CreateProducer()
@@ -36,7 +37,8 @@ namespace StrategyDemo.Tests.EditMode
             _grid = new GridMap(Width, Height);
             _registry = new OccupantRegistry();
             _factory = new RecordingUnitFactory();
-            _producer = new UnitProducer(_grid, _registry, _factory);
+            _reservations = new CellReservations(Width, Height);
+            _producer = new UnitProducer(_grid, _registry, _reservations, _factory);
         }
 
         [TearDown]
@@ -48,9 +50,10 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Constructor_NullArgument_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(null, _registry, _factory));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, null, _factory));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, _registry, null));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(null, _registry, _reservations, _factory));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, null, _reservations, _factory));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, _registry, null, _factory));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, _registry, _reservations, null));
         }
 
         [Test]
@@ -187,11 +190,34 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void TryProduce_FactoryThrows_GivesCellBackAndRethrows()
         {
-            var producer = new UnitProducer(_grid, _registry, new ThrowingUnitFactory());
+            var producer = new UnitProducer(_grid, _registry, _reservations, new ThrowingUnitFactory());
             Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
 
             Assert.Throws<InvalidOperationException>(() => producer.TryProduce(_barracks, origin, _soldier, out _));
             Assert.That(_grid.GetOccupant(new Vector2Int(4, 2)), Is.EqualTo(GridMap.EmptyId));
+        }
+
+        [Test]
+        public void TryProduce_Success_ReservesTheSpawnCell()
+        {
+            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
+
+            _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
+
+            Assert.That(_reservations.OwnerOf(cell), Is.EqualTo(_grid.GetOccupant(cell)), "A standing soldier reserves its own cell (ADR-008).");
+        }
+
+        [Test]
+        public void TryProduce_SpawnCellIsAnotherSoldiersStopCell_SpawnsBesideIt()
+        {
+            // A soldier walking to the empty spawn cell has reserved it; a new soldier must not appear there.
+            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
+            Vector2Int spawn = UnitProducer.SpawnCellOf(_barracks, origin);
+            _reservations.Reserve(spawn, _registry.NextId());
+
+            Assert.That(_producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell), Is.True);
+            Assert.That(cell, Is.Not.EqualTo(spawn));
+            Assert.That(_grid.GetOccupant(spawn), Is.EqualTo(GridMap.EmptyId));
         }
 
         [Test]
