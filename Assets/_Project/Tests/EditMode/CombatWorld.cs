@@ -54,7 +54,7 @@ namespace StrategyDemo.Tests.EditMode
             unit.Init(definition, cell, id, Board.View.CellToWorld(cell), UnitFactory);
             Grid.Occupy(cell, Vector2Int.one, id);
             Registry.Add(unit);
-            Reservations.Reserve(cell, id);
+            Reservations.ReserveStopCell(cell, id);
             return unit;
         }
 
@@ -78,7 +78,7 @@ namespace StrategyDemo.Tests.EditMode
             Registry.Add(building);
             if (spawnCell.HasValue)
             {
-                Reservations.Reserve(spawnCell.Value, id);
+                Reservations.ReserveSpawnCell(spawnCell.Value, id);
             }
 
             return building;

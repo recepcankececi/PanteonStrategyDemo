@@ -401,7 +401,7 @@ namespace StrategyDemo.Tests.EditMode
             building.Init(definition, origin, id, Vector3.zero, null, spawnCell);
             if (spawnCell.HasValue)
             {
-                _reservations.Reserve(spawnCell.Value, id);
+                _reservations.ReserveSpawnCell(spawnCell.Value, id);
             }
 
             _grid.Occupy(origin, definition.Footprint, id);

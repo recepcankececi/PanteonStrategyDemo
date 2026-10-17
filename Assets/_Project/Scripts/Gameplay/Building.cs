@@ -51,8 +51,8 @@ namespace StrategyDemo.Gameplay
         public bool HasSpawnCell { get; private set; }
 
         /// <summary>
-        /// Cell where this building's soldiers appear, chosen once at placement (<see cref="BuildingPlacer"/>) and reserved
-        /// for the building's whole life. Meaningful only while <see cref="HasSpawnCell"/>.
+        /// Cell where this building's soldiers appear, chosen once at placement (<see cref="BuildingPlacer"/>) and held as a permanent
+        /// reservation for the building's whole life. Meaningful only while <see cref="HasSpawnCell"/>.
         /// </summary>
         public Vector2Int SpawnCell { get; private set; }
 

@@ -56,6 +56,7 @@ Run them with `Window > General > Test Runner > EditMode > Run All`.
 | Power Plant asked to produce (UI bypassed) | Throws; rule enforced in the model, not only the UI | `UnitProducerTests.TryProduce_BuildingThatProducesNothing_Throws`, `InfoPanelTests.Refresh_PowerPlantSelected_HasNoProductionSection` |
 | Soldier creation throws | Spawn cell given back, nothing registered | `UnitProducerTests.TryProduce_FactoryThrows_GivesCellBackAndRethrows` |
 | Barracks destroyed | Its spawn cell becomes an ordinary cell | `OccupantDespawnerTests.Despawn_Barracks_GivesBackItsSpawnCell` |
+| Code tries to move a spawn cell or give a building a second one | Refused loudly: a spawn cell is a *permanent* reservation, a soldier's stop cell a *temporary* one, and the API keeps them apart (`ReserveSpawnCell` vs `ReserveStopCell`) | `CellReservationsTests.ReserveStopCell_OwnerHoldsSpawnCell_ThrowsAndKeepsIt`, `CellReservationsTests.ReserveSpawnCell_OwnerAlreadyHoldsACell_Throws` |
 
 ## Selection
 

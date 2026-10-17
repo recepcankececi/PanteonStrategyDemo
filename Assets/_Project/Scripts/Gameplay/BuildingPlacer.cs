@@ -33,7 +33,7 @@ namespace StrategyDemo.Gameplay
 
         /// <param name="grid">Board occupancy; placed buildings are written into it.</param>
         /// <param name="occupants">Hands out ids and records every placed building, so its cells lead back to it.</param>
-        /// <param name="reservations">Stop cells of soldiers and spawn cells of buildings; a producer reserves its spawn cell here.</param>
+        /// <param name="reservations">Temporary stop cells of soldiers and permanent spawn cells of buildings; a producer reserves its spawn cell here.</param>
         /// <param name="factory">Creates the scene object.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
         public BuildingPlacer(GridMap grid, OccupantRegistry occupants, CellReservations reservations, IBuildingFactory factory)
@@ -150,8 +150,8 @@ namespace StrategyDemo.Gameplay
                 {
                     if (hasSpawnCell)
                     {
-                        // The building's one reservation, for its whole life; Building.LeaveBoard gives it back.
-                        _reservations.Reserve(spawnCell, occupantId);
+                        // The building's permanent reservation, for its whole life; Building.LeaveBoard gives it back.
+                        _reservations.ReserveSpawnCell(spawnCell, occupantId);
                     }
 
                     _occupants.Add(_factory.Create(placed, CandidateOrigin, occupantId, hasSpawnCell ? spawnCell : (Vector2Int?)null));
@@ -249,9 +249,9 @@ namespace StrategyDemo.Gameplay
             {
                 for (int x = origin.x; x < origin.x + footprint.x; x++)
                 {
-                    // A soldier's stop cell may be built on (the soldier plans again); a building's spawn cell may not.
-                    int owner = _reservations.OwnerOf(new Vector2Int(x, y));
-                    if (owner != GridMap.EmptyId && !IsSoldier(owner))
+                    // A soldier's temporary stop cell may be built on (the soldier plans again); a building's
+                    // permanent spawn cell may not.
+                    if (_reservations.IsPermanent(new Vector2Int(x, y)))
                     {
                         return true;
                     }

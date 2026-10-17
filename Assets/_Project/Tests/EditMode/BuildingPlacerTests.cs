@@ -383,7 +383,7 @@ namespace StrategyDemo.Tests.EditMode
         private int StandingSoldier(Vector2Int cell)
         {
             int id = WalkingSoldier(cell);
-            _reservations.Reserve(cell, id);
+            _reservations.ReserveStopCell(cell, id);
             return id;
         }
 
@@ -520,7 +520,7 @@ namespace StrategyDemo.Tests.EditMode
             // A soldier still walking to an empty cell: building there is allowed, the soldier plans a new stop cell.
             int soldier = _occupants.NextId();
             _occupants.Add(new FakeOccupant(soldier, new Vector2Int(9, 9), Vector2Int.one, isMobile: true));
-            _reservations.Reserve(new Vector2Int(4, 1), soldier);
+            _reservations.ReserveStopCell(new Vector2Int(4, 1), soldier);
             _placer.Begin(_powerPlant);
 
             _placer.MoveTo(new Vector2Int(4, 1));
@@ -531,10 +531,10 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void MoveTo_ProducerWhoseSpawnSideIsAnotherProducersSpawnCell_SkipsThatSide()
         {
-            // Another Barracks owns (4, 2) as its spawn cell: a reservation held by a building, not a soldier.
+            // Another Barracks owns (4, 2) as its spawn cell: a permanent reservation, not a soldier's temporary one.
             int otherBarracks = _occupants.NextId();
             _occupants.Add(new FakeOccupant(otherBarracks, new Vector2Int(5, 0), new Vector2Int(3, 1)));
-            _reservations.Reserve(new Vector2Int(4, 2), otherBarracks);
+            _reservations.ReserveSpawnCell(new Vector2Int(4, 2), otherBarracks);
             _placer.Begin(_producer);
 
             _placer.MoveTo(new Vector2Int(3, 3));
@@ -549,6 +549,7 @@ namespace StrategyDemo.Tests.EditMode
 
             int id = _grid.GetOccupant(new Vector2Int(3, 3));
             Assert.That(_reservations.OwnerOf(new Vector2Int(4, 2)), Is.EqualTo(id));
+            Assert.That(_reservations.IsPermanent(new Vector2Int(4, 2)), Is.True, "A spawn cell is held for the building's life.");
             Assert.That(_factory.SpawnCells[0], Is.EqualTo(new Vector2Int(4, 2)));
             Assert.That(_grid.GetOccupant(new Vector2Int(4, 2)), Is.EqualTo(GridMap.EmptyId), "Soldiers still walk through it.");
         }
@@ -570,7 +571,7 @@ namespace StrategyDemo.Tests.EditMode
             _placer.MoveTo(new Vector2Int(3, 3));
             int soldier = _occupants.NextId();
             _occupants.Add(new FakeOccupant(soldier, new Vector2Int(9, 7), Vector2Int.one, isMobile: true));
-            _reservations.Reserve(new Vector2Int(4, 2), soldier);
+            _reservations.ReserveStopCell(new Vector2Int(4, 2), soldier);
 
             Assert.That(_placer.TryPlace(keepPlacing: false), Is.True);
             Assert.That(_factory.SpawnCells[0], Is.EqualTo(new Vector2Int(6, 4)));

@@ -42,7 +42,7 @@ namespace StrategyDemo.Tests.EditMode
             _unit.Init(_board.Unit("Soldier"), new Vector2Int(1, 1), id, _board.View.CellToWorld(new Vector2Int(1, 1)));
             _grid.Occupy(new Vector2Int(1, 1), Vector2Int.one, id);
             _registry.Add(_unit);
-            _reservations.Reserve(new Vector2Int(1, 1), id);
+            _reservations.ReserveStopCell(new Vector2Int(1, 1), id);
         }
 
         [TearDown]

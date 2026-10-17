@@ -357,8 +357,8 @@ namespace StrategyDemo.Tests.EditMode
             PlaceBuilding(new Vector2Int(2, 0), Vector2Int.one);
             Unit unit = Spawn(new Vector2Int(0, 0));
             _reservations.Release(unit.OccupantId);
-            _reservations.Reserve(new Vector2Int(0, 0), 900);
-            _reservations.Reserve(new Vector2Int(1, 0), 901);
+            _reservations.ReserveStopCell(new Vector2Int(0, 0), 900);
+            _reservations.ReserveStopCell(new Vector2Int(1, 0), 901);
 
             Move(new Vector2Int(1, 0), unit);
             for (int i = 0; i < 20; i++)
@@ -527,7 +527,7 @@ namespace StrategyDemo.Tests.EditMode
             // A Barracks' spawn cell: reserved by the building, so the soldier standing on it must move on.
             IBoardOccupant barracks = PlaceBuilding(new Vector2Int(3, 3), new Vector2Int(3, 3));
             var spawnCell = new Vector2Int(4, 2);
-            _reservations.Reserve(spawnCell, barracks.OccupantId);
+            _reservations.ReserveSpawnCell(spawnCell, barracks.OccupantId);
             Unit unit = SpawnUnreserved(spawnCell);
 
             _movement.StepAside(unit);
@@ -556,7 +556,7 @@ namespace StrategyDemo.Tests.EditMode
             // Two soldiers produced in one frame share the spawn cell; only the first holds it in the grid.
             IBoardOccupant barracks = PlaceBuilding(new Vector2Int(3, 3), new Vector2Int(3, 3));
             var spawnCell = new Vector2Int(4, 2);
-            _reservations.Reserve(spawnCell, barracks.OccupantId);
+            _reservations.ReserveSpawnCell(spawnCell, barracks.OccupantId);
             Unit first = SpawnUnreserved(spawnCell);
             Unit second = SpawnUnreserved(spawnCell, holdsCell: false);
 
@@ -588,7 +588,7 @@ namespace StrategyDemo.Tests.EditMode
             // (0, 0) with buildings on (1, 0) and (0, 1): no step leads anywhere, and (0, 0) itself is reserved.
             PlaceBuilding(new Vector2Int(1, 0), Vector2Int.one);
             PlaceBuilding(new Vector2Int(0, 1), Vector2Int.one);
-            _reservations.Reserve(Vector2Int.zero, _registry.NextId());
+            _reservations.ReserveStopCell(Vector2Int.zero, _registry.NextId());
 
             Assert.That(_movement.HasStopCellNear(Vector2Int.zero), Is.False);
         }
@@ -623,7 +623,7 @@ namespace StrategyDemo.Tests.EditMode
             unit.Init(_soldier, cell, id, _board.View.CellToWorld(cell));
             _grid.Occupy(cell, Vector2Int.one, id);
             _registry.Add(unit);
-            _reservations.Reserve(cell, id);
+            _reservations.ReserveStopCell(cell, id);
             return unit;
         }
 

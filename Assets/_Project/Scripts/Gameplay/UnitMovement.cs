@@ -16,9 +16,10 @@ namespace StrategyDemo.Gameplay
     /// <item>Only buildings block paths; soldiers walk through each other.</item>
     /// <item>An unreachable goal (e.g. a building's cell, or a walled-off pocket) leads to the reachable cell closest
     /// to it, so right-clicking a building walks the soldier up to it.</item>
-    /// <item>Every soldier reserves the cell it will stop on (<see cref="CellReservations"/>); a cell already
-    /// reserved is replaced by the nearest free one (BFS), so a group spreads around its target. A Barracks reserves its
-    /// spawn cell for good, so soldiers walk through it but never stop on it.</item>
+    /// <item>Every soldier holds a temporary reservation on the cell it will stop on
+    /// (<see cref="CellReservations.ReserveStopCell"/>); a cell already reserved is replaced by the nearest free one
+    /// (BFS), so a group spreads around its target. A Barracks holds a permanent reservation on its spawn cell
+    /// (<see cref="CellReservations.ReserveSpawnCell"/>), so soldiers walk through it but never stop on it.</item>
     /// <item>A soldier holds a grid cell only where its centre is: <see cref="Unit.Origin"/> follows the centre (it
     /// changes at the midpoint between two cells), and the grid cell follows when that cell is free. While it walks
     /// through a cell another soldier holds, it holds no cell at all. So every grid cell a soldier holds is one it
@@ -51,7 +52,7 @@ namespace StrategyDemo.Gameplay
 
         /// <param name="grid">Board occupancy; soldiers' cells are moved in it as they walk.</param>
         /// <param name="occupants">Tells soldiers (walkable) from buildings (walls).</param>
-        /// <param name="reservations">Stop cells of all soldiers and spawn cells of all Barracks: nobody else stops there.</param>
+        /// <param name="reservations">Temporary stop cells of all soldiers and permanent spawn cells of all Barracks: nobody else stops there.</param>
         /// <param name="gridView">Converts cells to world positions.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
         public UnitMovement(GridMap grid, OccupantRegistry occupants, CellReservations reservations, GridView gridView)
@@ -128,7 +129,7 @@ namespace StrategyDemo.Gameplay
 
         /// <summary>
         /// Sends <paramref name="unit"/> to the nearest cell it may stop on, e.g. off the spawn cell it was just produced
-        /// on: a spawn cell is reserved by its building, so no soldier ever stops there. A soldier already free to stop
+        /// on: a spawn cell is its building's permanent reservation, so no soldier ever stops there. A soldier already free to stop
         /// where it stands stays there.
         /// </summary>
         /// <exception cref="ArgumentNullException"><paramref name="unit"/> is null.</exception>
@@ -372,7 +373,7 @@ namespace StrategyDemo.Gameplay
             order.HasStopCell = CanStopAt(order.Destination);
             if (order.HasStopCell)
             {
-                _reservations.Reserve(order.Destination, unit.OccupantId);
+                _reservations.ReserveStopCell(order.Destination, unit.OccupantId);
             }
 
             order.NextIndex = FirstWaypoint(path);

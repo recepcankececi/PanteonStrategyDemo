@@ -4,7 +4,7 @@ A 2D real-time strategy prototype built for the Panteon "Strategy Game Demo" cas
 (Universal 2D / URP). Place buildings from an endlessly scrolling production menu, train soldiers from a
 Barracks, move them around buildings with A\* and attack buildings or other soldiers.
 
-![Gameplay: a selected Barracks with its production list, nine soldiers attacking a Command Center](Docs/screenshot.png)
+![Gameplay: a selected Barracks with its spawn marker and production list, Assault, Rifleman and Scout soldiers firing tracers at a Command Center](Docs/screenshot.png)
 
 **Windows build:** download `StrategyGameDemo-Windows.zip` from the
 [v1.0.0 release](https://github.com/recepcankececi/PanteonStrategyDemo/releases/tag/v1.0.0), unzip it and run
@@ -53,7 +53,7 @@ There is no enemy faction: as the case allows, soldiers attack your own building
 | Pathfinding with A\* | Octile heuristic, binary-heap open list, no diagonal corner cutting | `Pathfinder`, `PathNodeHeap` |
 | All edge cases considered | Every case per system with the test that proves it, plus the few limits accepted on purpose | [`Docs/EdgeCases.md`](Docs/EdgeCases.md) |
 
-Paths above are relative to `Assets/_Project/`. Every logic rule in the table has EditMode tests (678 in total); how each edge case is handled, and which test proves it, is listed in [Docs/EdgeCases.md](Docs/EdgeCases.md).
+Paths above are relative to `Assets/_Project/`. Every logic rule in the table has EditMode tests (685 in total); how each edge case is handled, and which test proves it, is listed in [Docs/EdgeCases.md](Docs/EdgeCases.md).
 
 ## Architecture
 
@@ -77,8 +77,8 @@ Assets/_Project/Scripts/
 - **Data-driven.** Names, sprites, footprints, HP, damage, range, attack interval, speed and the grid size live in
   ScriptableObjects. A new building is a new asset added to `BuildingCatalog`; no code changes.
 - **A\*.** 8-directional grid search with an octile heuristic and a binary heap; buildings are walls, soldiers are
-  not (each soldier reserves the cell it will stop on instead, and each Barracks reserves its spawn cell for its
-  whole life). An unreachable goal ends at the closest reachable cell. Buffers are reused, so a search allocates nothing after warm-up.
+  not (each soldier holds a temporary reservation on the cell it will stop on instead, and each Barracks a permanent
+  one on its spawn cell). An unreachable goal ends at the closest reachable cell. Buffers are reused, so a search allocates nothing after warm-up.
 - **Pooling.** Production Menu rows, Information Panel rows, soldiers, buildings, selection markers and combat
   effects all come from `ObjectPool<T>` and reset their state on release. The Production Menu keeps only the rows
   that fit on screen plus one, moves the row that scrolls out to the other end and rebinds it.
@@ -101,7 +101,7 @@ Assets/_Project/Scripts/
 Unity.exe -batchmode -quit -projectPath . -executeMethod StrategyDemo.EditorTools.BuildScript.BuildWindows -logFile Builds/build.log
 ```
 
-**Tests:** `Window > General > Test Runner > EditMode > Run All` (assembly `StrategyDemo.Tests.EditMode`, 678 tests).
+**Tests:** `Window > General > Test Runner > EditMode > Run All` (assembly `StrategyDemo.Tests.EditMode`, 685 tests).
 
 ## Art
 
