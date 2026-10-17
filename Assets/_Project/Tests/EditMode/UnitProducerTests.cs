@@ -258,6 +258,10 @@ namespace StrategyDemo.Tests.EditMode
                 Created.Add((definition, cell, occupantId));
                 return new FakeOccupant(occupantId, cell, Vector2Int.one, isMobile: true);
             }
+
+            public void Release(Unit unit)
+            {
+            }
         }
 
         private sealed class ThrowingUnitFactory : IUnitFactory
@@ -265,6 +269,10 @@ namespace StrategyDemo.Tests.EditMode
             public IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId)
             {
                 throw new InvalidOperationException("Simulated failure while creating the soldier.");
+            }
+
+            public void Release(Unit unit)
+            {
             }
         }
     }

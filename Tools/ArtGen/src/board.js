@@ -1,4 +1,5 @@
-// Board sprites that are not objects: the ground tile, the board's closing edge and the white cell used for highlights.
+// Board sprites that are not objects: the ground tile, the board's closing edge, the white cell used for highlights
+// and the health bar strip.
 'use strict';
 
 const C = require('./palette');
@@ -47,8 +48,21 @@ function cellHighlight() {
   ].join('\n'));
 }
 
+/**
+ * Health bar strip: a plain white bar. Unity draws it twice, a dark tint for the background and a coloured tint for the
+ * remaining health scaled along X (HealthBar.cs), so one sprite serves both and every bar batches with the world atlas.
+ * Square corners: the fill is scaled horizontally, which would squash rounded ones.
+ */
+function healthBar() {
+  return svg(HEALTH_BAR_SIZE[0], HEALTH_BAR_SIZE[1], rect(0, 0, HEALTH_BAR_SIZE[0], HEALTH_BAR_SIZE[1], '#ffffff'));
+}
+
+// Pixel size of the health bar: three quarters of a cell wide (a soldier's bar stays inside its cell), a few pixels tall.
+const HEALTH_BAR_SIZE = [48, 6];
+
 module.exports = [
   { name: 'Ground', cells: [1, 1], build: ground },
   { name: 'CellHighlight', cells: [1, 1], build: cellHighlight },
   { name: 'BoardEdge', cells: [1, 1], build: boardEdge },
+  { name: 'HealthBar', size: HEALTH_BAR_SIZE, build: healthBar },
 ];

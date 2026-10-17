@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using StrategyDemo.Core;
+using UnityEngine;
 
 namespace StrategyDemo.Gameplay
 {
@@ -62,6 +63,29 @@ namespace StrategyDemo.Gameplay
         public bool TryGet(int occupantId, out IBoardOccupant occupant)
         {
             return _occupants.TryGetValue(occupantId, out occupant);
+        }
+
+        /// <summary>
+        /// Looks up whatever holds <paramref name="cell"/> in <paramref name="grid"/>: cell → id (grid), id → object
+        /// (here). False for a cell off the board or an empty one.
+        /// </summary>
+        /// <exception cref="ArgumentNullException"><paramref name="grid"/> is null.</exception>
+        public bool TryGetAt(GridMap grid, Vector2Int cell, out IBoardOccupant occupant)
+        {
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            occupant = null;
+            if (!grid.IsInside(cell))
+            {
+                return false;
+            }
+
+            int id = grid.GetOccupant(cell);
+            // An id without a registered object would be a bookkeeping bug; treat it as empty ground.
+            return id != GridMap.EmptyId && _occupants.TryGetValue(id, out occupant);
         }
     }
 }

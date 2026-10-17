@@ -10,9 +10,10 @@ using UnityEngine.UI;
 namespace StrategyDemo.UI
 {
     /// <summary>
-    /// Information panel (I3, R4, R5): image, name, max HP and footprint of the selected building or soldier.
-    /// A building that produces soldiers also lists them; clicking one produces it instantly (R3).
-    /// Buildings without producible units (Power Plant) show no production section at all.
+    /// Information panel (I3, R4, R5): image, name, current/max HP (live) and footprint of the selected building or
+    /// soldier. A building that produces soldiers also lists them; clicking one produces it instantly (R3).
+    /// Buildings without producible units (Power Plant) show no production section at all. Several selected soldiers
+    /// show as "N soldiers selected" with the first one's image.
     /// </summary>
     /// <remarks>
     /// Production rows come from an <see cref="ObjectPool{T}"/>: they are rebound on every selection change
@@ -21,6 +22,7 @@ namespace StrategyDemo.UI
     public sealed class InfoPanel : MonoBehaviour
     {
         private const string NoFreeCellMessage = "No free cell on the board.";
+        private const string GroupHeaderFormat = "{0} soldiers selected";
 
         [SerializeField, Tooltip("Shown while nothing is selected.")] private GameObject _emptyState;
         [SerializeField, Tooltip("Shown while something is selected.")] private GameObject _details;
@@ -39,6 +41,8 @@ namespace StrategyDemo.UI
         private SelectionService _selection;
         private UnitProducer _producer;
         private bool _isSubscribed;
+        // Health shown in the HP label, followed live while its object stays selected.
+        private Health _shownHealth;
 
         /// <summary>Production rows currently shown, top to bottom.</summary>
         internal IReadOnlyList<UnitProductionItemView> Rows => _rows;
@@ -76,19 +80,30 @@ namespace StrategyDemo.UI
         internal void Refresh()
         {
             ReleaseRows();
+            UnfollowHealth();
             _statusLabel.text = string.Empty;
 
             IBoardOccupant selected = _selection.Selected;
             _emptyState.SetActive(selected == null);
             _details.SetActive(selected != null);
 
+            int count = _selection.All.Count;
+            if (count > 1 && selected is Unit first)
+            {
+                // A box selects soldiers only; their stats differ, so the group shows only its size and an image.
+                ShowGroup(first.Definition, count);
+                return;
+            }
+
             switch (selected)
             {
                 case Building building:
                     ShowBuilding(building.Definition);
+                    FollowHealth(building.Health);
                     break;
                 case Unit unit:
                     ShowUnit(unit.Definition);
+                    FollowHealth(unit.Health);
                     break;
                 case null:
                     break;
@@ -103,7 +118,7 @@ namespace StrategyDemo.UI
 
         private void ShowBuilding(BuildingDefinition building)
         {
-            ShowCommon(building.Sprite, building.DisplayName, building.MaxHealth, building.Footprint);
+            ShowCommon(building.Sprite, building.DisplayName, building.Footprint);
             _damageLabel.gameObject.SetActive(false);
 
             // R5: no production section at all, not an empty one, for buildings that produce nothing.
@@ -121,20 +136,59 @@ namespace StrategyDemo.UI
 
         private void ShowUnit(UnitDefinition unit)
         {
-            ShowCommon(unit.Sprite, unit.DisplayName, unit.MaxHealth, Vector2Int.one);
+            ShowCommon(unit.Sprite, unit.DisplayName, Vector2Int.one);
             _damageLabel.gameObject.SetActive(true);
             _damageLabel.SetText("Damage {0}", unit.Damage);
             _productionSection.SetActive(false);
         }
 
-        private void ShowCommon(Sprite image, string displayName, int maxHealth, Vector2Int footprint)
+        private void ShowGroup(UnitDefinition first, int count)
+        {
+            ShowImage(first.Sprite);
+            _nameLabel.SetText(GroupHeaderFormat, count);
+            _healthLabel.gameObject.SetActive(false);
+            _footprintLabel.gameObject.SetActive(false);
+            _damageLabel.gameObject.SetActive(false);
+            _productionSection.SetActive(false);
+        }
+
+        private void ShowCommon(Sprite image, string displayName, Vector2Int footprint)
+        {
+            ShowImage(image);
+            _nameLabel.text = displayName;
+            // The text itself is written by ShowHealth, which also follows every later hit.
+            _healthLabel.gameObject.SetActive(true);
+            _footprintLabel.gameObject.SetActive(true);
+            _footprintLabel.SetText("Size {0}×{1}", footprint.x, footprint.y);
+        }
+
+        private void ShowImage(Sprite image)
         {
             _image.sprite = image;
             // A uGUI Image without a sprite draws a white square; hide it instead.
             _image.enabled = image != null;
-            _nameLabel.text = displayName;
-            _healthLabel.SetText("HP {0}", maxHealth);
-            _footprintLabel.SetText("Size {0}×{1}", footprint.x, footprint.y);
+        }
+
+        private void FollowHealth(Health health)
+        {
+            _shownHealth = health;
+            _shownHealth.Changed += ShowHealth;
+            ShowHealth();
+        }
+
+        private void UnfollowHealth()
+        {
+            if (_shownHealth != null)
+            {
+                _shownHealth.Changed -= ShowHealth;
+                _shownHealth = null;
+            }
+        }
+
+        private void ShowHealth()
+        {
+            // SetText with arguments formats without allocating a string per hit.
+            _healthLabel.SetText("HP {0}/{1}", _shownHealth.Current, _shownHealth.Max);
         }
 
         private void HandleProduceClicked(UnitDefinition unit)
@@ -166,6 +220,8 @@ namespace StrategyDemo.UI
                 _selection.SelectionChanged -= Refresh;
                 _isSubscribed = false;
             }
+
+            UnfollowHealth();
         }
 
         private void Subscribe()

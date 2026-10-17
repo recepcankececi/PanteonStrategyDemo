@@ -180,6 +180,36 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_selection.All, Is.EqualTo(new[] { clicked }));
         }
 
+        [Test]
+        public void Remove_OneOfGroup_KeepsTheRestAndNotifies()
+        {
+            IBoardOccupant first = PlaceSoldier(new Vector2Int(1, 1));
+            IBoardOccupant second = PlaceSoldier(new Vector2Int(2, 1));
+            _selection.SelectSoldiersIn(new RectInt(0, 0, 4, 4));
+            _changedCount = 0;
+
+            _selection.Remove(first);
+
+            Assert.That(_selection.All, Is.EqualTo(new[] { second }));
+            Assert.That(_selection.Selected, Is.SameAs(second));
+            Assert.That(_changedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Remove_NotSelected_DoesNotNotify()
+        {
+            PlaceSoldier(new Vector2Int(1, 1));
+            IBoardOccupant other = PlaceSoldier(new Vector2Int(5, 5));
+            _selection.SelectAt(new Vector2Int(1, 1));
+            _changedCount = 0;
+
+            _selection.Remove(other);
+            _selection.Remove(null);
+
+            Assert.That(_selection.All.Count, Is.EqualTo(1));
+            Assert.That(_changedCount, Is.Zero);
+        }
+
         private IBoardOccupant PlaceSoldier(Vector2Int cell)
         {
             var soldier = new FakeOccupant(_registry.NextId(), cell, Vector2Int.one, isMobile: true);

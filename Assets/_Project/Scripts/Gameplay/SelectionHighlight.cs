@@ -9,7 +9,8 @@ namespace StrategyDemo.Gameplay
 {
     /// <summary>
     /// Marks every selected building or soldier with the tiled cell sprite, in its own colour so it never reads as the
-    /// green/red placement preview. One pooled marker per selected object; markers follow walking soldiers.
+    /// green/red placement preview. One pooled marker per selected object; markers follow walking soldiers. Selected
+    /// objects also pin their health bar, so it shows even at full health.
     /// </summary>
     /// <remarks>
     /// The colour is a vertex colour (<see cref="SpriteRenderer.color"/>): the shared material is untouched and the
@@ -23,6 +24,8 @@ namespace StrategyDemo.Gameplay
         [SerializeField] private Color _tint = new Color(1f, 0.85f, 0.2f, 0.5f);
 
         private readonly List<SpriteRenderer> _markers = new List<SpriteRenderer>();
+        // Objects whose health bar this highlight pinned; unpinned on the next refresh.
+        private readonly List<IDamageable> _pinned = new List<IDamageable>();
         private ObjectPool<SpriteRenderer> _markerPool;
         private SelectionService _selection;
         private bool _isSubscribed;
@@ -65,12 +68,19 @@ namespace StrategyDemo.Gameplay
             }
 
             _markers.Clear();
+            // A destroyed object leaves the selection before it returns to its pool, so it is still safe to unpin here.
+            UnpinAll();
             IReadOnlyList<IBoardOccupant> selected = _selection.All;
             for (int i = 0; i < selected.Count; i++)
             {
                 SpriteRenderer marker = _markerPool.Get();
                 marker.size = (Vector2)selected[i].Footprint * GridConfig.CellWorldSize;
                 _markers.Add(marker);
+                if (selected[i] is IDamageable damageable)
+                {
+                    damageable.PinHealthBar(true);
+                    _pinned.Add(damageable);
+                }
             }
 
             FollowSelection();
@@ -112,6 +122,19 @@ namespace StrategyDemo.Gameplay
                 _selection.SelectionChanged -= Refresh;
                 _isSubscribed = false;
             }
+
+            // Not listening any more, so a pinned object could be destroyed and reused unseen: let go of them now.
+            UnpinAll();
+        }
+
+        private void UnpinAll()
+        {
+            for (int i = 0; i < _pinned.Count; i++)
+            {
+                _pinned[i].PinHealthBar(false);
+            }
+
+            _pinned.Clear();
         }
 
         private void Subscribe()

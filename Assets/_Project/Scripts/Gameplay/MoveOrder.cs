@@ -18,8 +18,20 @@ namespace StrategyDemo.Gameplay
         /// <summary>The walking soldier; null while the order waits in the pool.</summary>
         public Unit Unit { get; set; }
 
-        /// <summary>Cell the player clicked; kept so a blocked path can be planned again towards it.</summary>
+        /// <summary>
+        /// Cell the player clicked; kept so a blocked path can be planned again towards it. For an approach, the
+        /// target's cell nearest the soldier, recomputed on every plan.
+        /// </summary>
         public Vector2Int Goal { get; set; }
+
+        /// <summary>
+        /// Building or soldier being approached to attack; null for a plain move. The stop cell is then picked within
+        /// <see cref="Range"/> of it.
+        /// </summary>
+        public IBoardOccupant Target { get; set; }
+
+        /// <summary>Attack range in cells; meaningful only while <see cref="Target"/> is set.</summary>
+        public int Range { get; set; }
 
         /// <summary>Cell the soldier will stop on: the goal, or the nearest cell it can reach and reserve.</summary>
         public Vector2Int Destination { get; set; }
@@ -55,6 +67,8 @@ namespace StrategyDemo.Gameplay
             Path.Clear();
             NextIndex = 0;
             Goal = default;
+            Target = null;
+            Range = 0;
             Destination = default;
             HasStopCell = false;
             HoldsCell = false;

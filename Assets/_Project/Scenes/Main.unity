@@ -737,6 +737,7 @@ Transform:
   - {fileID: 1708554864}
   - {fileID: 106129161}
   - {fileID: 1370875868}
+  - {fileID: 1173511112}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &346182836
@@ -753,6 +754,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
   m_Asset: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_ActionId: 44b200b1-1557-4083-816c-b22cbdf77ddf
+--- !u!1 &510726783
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 510726784}
+  m_Layer: 0
+  m_Name: Pool_Building
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &510726784
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 510726783}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1333409174}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1688,6 +1720,50 @@ MonoBehaviour:
   m_EditorClassIdentifier: StrategyDemo.Gameplay::StrategyDemo.Gameplay.GridView
   _ground: {fileID: 1431126729}
   _edge: {fileID: 1524844892}
+--- !u!1 &1173511111
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1173511112}
+  - component: {fileID: 1173511113}
+  m_Layer: 0
+  m_Name: UnitCombat
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1173511112
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1173511111}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 300327298}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1173511113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1173511111}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 300fd716da5b6f144a6d309e9c475b6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: StrategyDemo.Gameplay::StrategyDemo.Gameplay.UnitCombatDriver
 --- !u!114 &1259839859
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1837,6 +1913,7 @@ Transform:
   - {fileID: 1938054916}
   - {fileID: 1799498144}
   - {fileID: 1342378943}
+  - {fileID: 510726784}
   - {fileID: 1472473558}
   - {fileID: 1830262395}
   - {fileID: 538275380}
@@ -2914,6 +2991,7 @@ MonoBehaviour:
   _productionMenu: {fileID: 242114303}
   _buildingPrefab: {fileID: 3043909261503514044, guid: e5927f00f3668184f91e49b4a0a41dce, type: 3}
   _buildingsRoot: {fileID: 1938054916}
+  _buildingPoolRoot: {fileID: 510726784}
   _placementGhost: {fileID: 1472473559}
   _unitPrefab: {fileID: 3208200296910578885, guid: 0110247dca526304b8df955d902ba453, type: 3}
   _unitsRoot: {fileID: 1799498144}
@@ -2921,6 +2999,7 @@ MonoBehaviour:
   _selectionHighlight: {fileID: 1830262396}
   _selectionBox: {fileID: 538275381}
   _movementDriver: {fileID: 1370875869}
+  _combatDriver: {fileID: 1173511113}
   _infoPanel: {fileID: 1286756364}
   _inputController: {fileID: 106129162}
 --- !u!1 &1745047543

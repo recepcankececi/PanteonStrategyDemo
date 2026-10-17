@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using NUnit.Framework;
 using StrategyDemo.Core;
 using StrategyDemo.Gameplay;
@@ -146,6 +147,42 @@ namespace StrategyDemo.Tests.EditMode
             _highlight.Refresh();
             Assert.That(_highlight.Markers[0], Is.SameAs(first), "The pooled marker is reused.");
             Assert.That(_highlightObject.transform.childCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Refresh_SelectedSoldier_PinsItsHealthBarUntilDeselected()
+        {
+            _unit = TestBoard.CreateUnitObject("Pinned");
+            int id = _registry.NextId();
+            _unit.Init(_board.Unit("Soldier"), new Vector2Int(1, 1), id, new Vector3(1.5f, 1.5f, 0f));
+            _grid.Occupy(new Vector2Int(1, 1), Vector2Int.one, id);
+            _registry.Add(_unit);
+            var bar = _unit.GetComponentInChildren<HealthBar>();
+
+            _selection.SelectAt(new Vector2Int(1, 1));
+            _highlight.Refresh();
+            Assert.That(bar.IsVisible, Is.True, "Selected: shown even at full health.");
+
+            _selection.Clear();
+            _highlight.Refresh();
+            Assert.That(bar.IsVisible, Is.False);
+        }
+
+        [Test]
+        public void OnDisable_UnpinsHealthBars()
+        {
+            _unit = TestBoard.CreateUnitObject("Pinned");
+            int id = _registry.NextId();
+            _unit.Init(_board.Unit("Soldier"), new Vector2Int(1, 1), id, new Vector3(1.5f, 1.5f, 0f));
+            _grid.Occupy(new Vector2Int(1, 1), Vector2Int.one, id);
+            _registry.Add(_unit);
+            _selection.SelectAt(new Vector2Int(1, 1));
+            _highlight.Refresh();
+
+            // EditMode never runs a plain MonoBehaviour's OnDisable, so call it as Unity would.
+            typeof(SelectionHighlight).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_highlight, null);
+
+            Assert.That(_unit.GetComponentInChildren<HealthBar>().IsVisible, Is.False);
         }
 
         private void Place(Vector2Int origin, Vector2Int footprint, bool isMobile, Vector3 worldCenter)

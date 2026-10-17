@@ -45,8 +45,8 @@ namespace StrategyDemo.Tests.EditMode
 
         public GridView View { get; }
 
-        /// <summary>Creates a definition with the given footprint and a small sprite; destroyed with the board.</summary>
-        public BuildingDefinition Definition(string assetName, Vector2Int footprint)
+        /// <summary>Creates a definition with the given footprint, health and a small sprite; destroyed with the board.</summary>
+        public BuildingDefinition Definition(string assetName, Vector2Int footprint, int health = 100)
         {
             var texture = new Texture2D(footprint.x, footprint.y) { name = assetName };
             Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, footprint.x, footprint.y), new Vector2(0.5f, 0.5f), 1f);
@@ -55,6 +55,7 @@ namespace StrategyDemo.Tests.EditMode
             var serialized = new SerializedObject(definition);
             serialized.FindProperty("_footprint").vector2IntValue = footprint;
             serialized.FindProperty("_sprite").objectReferenceValue = sprite;
+            serialized.FindProperty("_maxHealth").intValue = health;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             _owned.Add(texture);
@@ -84,7 +85,7 @@ namespace StrategyDemo.Tests.EditMode
         /// Creates a soldier definition with a standing sprite and <paramref name="frameCount"/> walk frames; destroyed
         /// with the board.
         /// </summary>
-        public UnitDefinition Unit(string assetName, int damage = 1, int frameCount = 2)
+        public UnitDefinition Unit(string assetName, int damage = 1, int frameCount = 2, int range = 1, float interval = 1f, int health = 10)
         {
             // One pixel per walk frame plus one for the standing sprite.
             var texture = new Texture2D(frameCount + 1, 1) { name = assetName };
@@ -96,6 +97,9 @@ namespace StrategyDemo.Tests.EditMode
             var serialized = new SerializedObject(definition);
             serialized.FindProperty("_displayName").stringValue = assetName;
             serialized.FindProperty("_damage").intValue = damage;
+            serialized.FindProperty("_attackRange").intValue = range;
+            serialized.FindProperty("_attackInterval").floatValue = interval;
+            serialized.FindProperty("_maxHealth").intValue = health;
             Sprite standing = Sprite.Create(texture, new Rect(frameCount, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
             standing.name = $"{assetName}_Stand";
             _owned.Add(standing);
@@ -115,19 +119,54 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         /// <summary>
-        /// Builds a soldier like the Unit prefab: <see cref="Unit"/> on the root, renderer and flipbook on a "Visual"
-        /// child. The caller destroys the returned object.
+        /// Builds a soldier like the Unit prefab: <see cref="Unit"/> on the root, renderer, flipbook and hit flash on a
+        /// "Visual" child (the first child), health bar on a "HealthBar" child. The caller destroys the returned object.
         /// </summary>
         public static Unit CreateUnitObject(string name)
         {
             var root = new GameObject(name);
-            var visual = new GameObject("Visual", typeof(SpriteRenderer), typeof(SpriteFlipbook));
+            var visual = new GameObject("Visual", typeof(SpriteRenderer), typeof(SpriteFlipbook), typeof(HitFlash));
             visual.transform.SetParent(root.transform, false);
+            HealthBar healthBar = CreateHealthBar(root.transform);
             var unit = root.AddComponent<Unit>();
             var serialized = new SerializedObject(unit);
             serialized.FindProperty("_visual").objectReferenceValue = visual.GetComponent<SpriteFlipbook>();
+            serialized.FindProperty("_healthBar").objectReferenceValue = healthBar;
+            serialized.FindProperty("_hitFlash").objectReferenceValue = visual.GetComponent<HitFlash>();
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return unit;
+        }
+
+        /// <summary>
+        /// Builds a building like the Building prefab: renderer, hit flash and <see cref="Building"/> on the root,
+        /// health bar on a "HealthBar" child. The caller destroys the returned object.
+        /// </summary>
+        public static Building CreateBuildingObject(string name)
+        {
+            var root = new GameObject(name, typeof(SpriteRenderer), typeof(HitFlash));
+            HealthBar healthBar = CreateHealthBar(root.transform);
+            var building = root.AddComponent<Building>();
+            var serialized = new SerializedObject(building);
+            serialized.FindProperty("_healthBar").objectReferenceValue = healthBar;
+            serialized.FindProperty("_hitFlash").objectReferenceValue = root.GetComponent<HitFlash>();
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return building;
+        }
+
+        private static HealthBar CreateHealthBar(Transform parent)
+        {
+            var bar = new GameObject("HealthBar");
+            bar.transform.SetParent(parent, false);
+            var background = new GameObject("Background", typeof(SpriteRenderer));
+            background.transform.SetParent(bar.transform, false);
+            var fill = new GameObject("Fill", typeof(SpriteRenderer));
+            fill.transform.SetParent(bar.transform, false);
+            var healthBar = bar.AddComponent<HealthBar>();
+            var serialized = new SerializedObject(healthBar);
+            serialized.FindProperty("_background").objectReferenceValue = background.GetComponent<SpriteRenderer>();
+            serialized.FindProperty("_fill").objectReferenceValue = fill.GetComponent<SpriteRenderer>();
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return healthBar;
         }
 
         public void Dispose()

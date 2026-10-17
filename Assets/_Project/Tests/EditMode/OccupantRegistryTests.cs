@@ -78,5 +78,29 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_registry.Remove(id), Is.False);
             Assert.That(_registry.NextId(), Is.EqualTo(id + 1), "A removed id is never handed out again.");
         }
+
+        [Test]
+        public void TryGetAt_CellOfRegisteredOccupant_ReturnsIt()
+        {
+            var grid = new StrategyDemo.Core.GridMap(5, 5);
+            var building = new FakeOccupant(_registry.NextId(), new Vector2Int(1, 1), new Vector2Int(2, 2));
+            grid.Occupy(building.Origin, building.Footprint, building.OccupantId);
+            _registry.Add(building);
+
+            Assert.That(_registry.TryGetAt(grid, new Vector2Int(2, 2), out IBoardOccupant found), Is.True);
+            Assert.That(found, Is.SameAs(building));
+        }
+
+        [Test]
+        public void TryGetAt_EmptyOffBoardOrUnregisteredCell_ReturnsFalse()
+        {
+            var grid = new StrategyDemo.Core.GridMap(5, 5);
+            grid.Occupy(new Vector2Int(4, 4), Vector2Int.one, _registry.NextId());
+
+            Assert.That(_registry.TryGetAt(grid, new Vector2Int(0, 0), out _), Is.False);
+            Assert.That(_registry.TryGetAt(grid, new Vector2Int(-1, 0), out _), Is.False);
+            Assert.That(_registry.TryGetAt(grid, new Vector2Int(4, 4), out _), Is.False);
+            Assert.Throws<ArgumentNullException>(() => _registry.TryGetAt(null, Vector2Int.zero, out _));
+        }
     }
 }

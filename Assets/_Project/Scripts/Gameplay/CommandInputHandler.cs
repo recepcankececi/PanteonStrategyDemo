@@ -1,23 +1,32 @@
 using System;
+using StrategyDemo.Core;
+using UnityEngine;
 
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Turns a right click on the board into an order for the selected soldiers (R6): walk to the clicked cell, or up
-    /// to the building or soldier standing there. Attacking that target arrives in M6. A selected building ignores
-    /// the click; clicks over the UI never reach the board.
+    /// Turns a right click on the board into an order for the selected soldiers: attack the building or soldier on the
+    /// clicked cell (R9), or walk to the cell when it is empty (R6). A selected building ignores the click; clicks over
+    /// the UI never reach the board.
     /// </summary>
     public sealed class CommandInputHandler
     {
         private readonly SelectionService _selection;
         private readonly UnitMovement _movement;
+        private readonly UnitCombat _combat;
+        private readonly GridMap _grid;
+        private readonly OccupantRegistry _occupants;
         private readonly GridView _gridView;
 
         /// <exception cref="ArgumentNullException">An argument is null.</exception>
-        public CommandInputHandler(SelectionService selection, UnitMovement movement, GridView gridView)
+        public CommandInputHandler(SelectionService selection, UnitMovement movement, UnitCombat combat, GridMap grid,
+            OccupantRegistry occupants, GridView gridView)
         {
             _selection = selection ?? throw new ArgumentNullException(nameof(selection));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
+            _combat = combat ?? throw new ArgumentNullException(nameof(combat));
+            _grid = grid ?? throw new ArgumentNullException(nameof(grid));
+            _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
             _gridView = gridView != null ? gridView : throw new ArgumentNullException(nameof(gridView));
         }
 
@@ -29,8 +38,18 @@ namespace StrategyDemo.Gameplay
                 return;
             }
 
-            // Buildings in the selection are skipped by the movement itself; an off-board cell is ignored there too.
-            _movement.MoveGroup(_selection.All, _gridView.WorldToCell(input.PointerWorld));
+            Vector2Int cell = _gridView.WorldToCell(input.PointerWorld);
+            // The attack rule leaves the clicked soldier itself out of its group's attack. When nobody may attack (the
+            // only selected soldier clicked itself), the click is a move to that cell instead.
+            if (_occupants.TryGetAt(_grid, cell, out IBoardOccupant occupant) && occupant is IDamageable target
+                && _combat.Attack(_selection.All, target))
+            {
+                return;
+            }
+
+            // A move cancels any attack. Buildings in the selection are skipped by both; an off-board cell is ignored.
+            _combat.Stop(_selection.All);
+            _movement.MoveGroup(_selection.All, cell);
         }
     }
 }

@@ -30,6 +30,9 @@ namespace StrategyDemo.Gameplay
             _grid = grid ?? throw new ArgumentNullException(nameof(grid));
             _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            // Cells change under a still pointer too (a building destroyed, a soldier walking in): keep the preview's
+            // colour true. Both live as long as the game; nothing to unsubscribe from.
+            _grid.AreaChanged += HandleAreaChanged;
         }
 
         /// <summary>
@@ -154,6 +157,14 @@ namespace StrategyDemo.Gameplay
 
             ResetToIdle();
             Changed?.Invoke();
+        }
+
+        private void HandleAreaChanged(RectInt area)
+        {
+            if (HasCandidate && area.Overlaps(new RectInt(CandidateOrigin, Definition.Footprint)))
+            {
+                SetValidity(_grid.IsAreaFree(CandidateOrigin, Definition.Footprint));
+            }
         }
 
         private void SetValidity(bool isValid)

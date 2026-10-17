@@ -26,6 +26,9 @@ namespace StrategyDemo.Gameplay
     /// <item>A building placed on the remaining path or the stop cell triggers a new plan from where the soldier is.</item>
     /// <item>When every reachable cell is reserved (a pocket packed with soldiers), the soldier waits where it is and
     /// plans again every frame until one frees up. Rare, and cheap on this board, so no "something changed" flag.</item>
+    /// <item>An approach (<see cref="Approach(Unit, IBoardOccupant)"/>, M6) stops on the first cell of the path within
+    /// attack range of the target; when that cell is reserved, on the nearest free cell within range; when no cell in
+    /// range is free, on the nearest free cell at all, where combat makes it wait and try again.</item>
     /// </list>
     /// </remarks>
     public sealed class UnitMovement
@@ -39,8 +42,11 @@ namespace StrategyDemo.Gameplay
         // Cached once: converting a method group to a delegate on every call would allocate.
         private readonly Predicate<int> _isSoldier;
         private readonly Predicate<Vector2Int> _canStopAt;
+        private readonly Predicate<Vector2Int> _canStopInRange;
         private readonly ObjectPool<MoveOrder> _orderPool;
         private readonly List<MoveOrder> _orders = new List<MoveOrder>();
+        // The order being planned, read by _canStopInRange: a cached delegate cannot take it as an argument.
+        private MoveOrder _planning;
 
         /// <param name="grid">Board occupancy; soldiers' cells are moved in it as they walk.</param>
         /// <param name="occupants">Tells soldiers (walkable) from buildings (walls).</param>
@@ -55,6 +61,7 @@ namespace StrategyDemo.Gameplay
             _gridView = gridView != null ? gridView : throw new ArgumentNullException(nameof(gridView));
             _isSoldier = IsSoldier;
             _canStopAt = CanStopAt;
+            _canStopInRange = CanStopInRange;
             _pathfinder = new Pathfinder(grid, _isSoldier);
             _stopCellSearch = new FreeCellSearch(grid);
             int cellCount = grid.Width * grid.Height;
@@ -102,8 +109,83 @@ namespace StrategyDemo.Gameplay
                 if (occupants[i] is Unit unit)
                 {
                     MoveOrder order = FindOrder(unit) ?? StartOrder(unit);
+                    order.Target = null;
                     order.Goal = target;
                     Plan(order);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends every soldier in <paramref name="units"/> to a cell within its attack range of
+        /// <paramref name="target"/>, each to its own cell (ADR-001 Karar 10, 11).
+        /// </summary>
+        /// <exception cref="ArgumentNullException">An argument is null.</exception>
+        public void Approach(IReadOnlyList<Unit> units, IBoardOccupant target)
+        {
+            if (units == null)
+            {
+                throw new ArgumentNullException(nameof(units));
+            }
+
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            // As in MoveGroup: let go of every old stop cell first, so the group may take each other's former cells.
+            for (int i = 0; i < units.Count; i++)
+            {
+                _reservations.Release(units[i].OccupantId);
+            }
+
+            for (int i = 0; i < units.Count; i++)
+            {
+                PlanApproach(units[i], target);
+            }
+        }
+
+        /// <summary>
+        /// Sends <paramref name="unit"/> to a cell within its attack range of <paramref name="target"/>. Combat calls
+        /// this again while a target walks away, or while the soldier waits for a free cell in range.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">An argument is null.</exception>
+        public void Approach(Unit unit, IBoardOccupant target)
+        {
+            if (unit == null)
+            {
+                throw new ArgumentNullException(nameof(unit));
+            }
+
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            _reservations.Release(unit.OccupantId);
+            PlanApproach(unit, target);
+        }
+
+        /// <summary>
+        /// Forgets <paramref name="target"/> (it was destroyed): soldiers approaching it walk on to the stop cell they
+        /// already reserved and stand there, as after a plain move.
+        /// </summary>
+        /// <exception cref="ArgumentNullException"><paramref name="target"/> is null.</exception>
+        public void ForgetTarget(IBoardOccupant target)
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            for (int i = 0; i < _orders.Count; i++)
+            {
+                MoveOrder order = _orders[i];
+                if (ReferenceEquals(order.Target, target))
+                {
+                    order.Target = null;
+                    // A later plan (a building placed on the way) heads back to the same cell.
+                    order.Goal = order.Destination;
                 }
             }
         }
@@ -194,12 +276,20 @@ namespace StrategyDemo.Gameplay
             return order;
         }
 
+        private void PlanApproach(Unit unit, IBoardOccupant target)
+        {
+            MoveOrder order = FindOrder(unit) ?? StartOrder(unit);
+            order.Target = target;
+            order.Range = unit.Definition.AttackRange;
+            Plan(order);
+        }
+
         private MoveOrder FindOrder(Unit unit)
         {
             // A loop over the few walking soldiers; no dictionary to keep in sync with the list.
             for (int i = 0; i < _orders.Count; i++)
             {
-                if (_orders[i].Unit == unit)
+                if (ReferenceEquals(_orders[i].Unit, unit))
                 {
                     return _orders[i];
                 }
@@ -214,15 +304,26 @@ namespace StrategyDemo.Gameplay
             Unit unit = order.Unit;
             Vector2Int start = BodyCell(unit);
             List<Vector2Int> path = order.Path;
+            IBoardOccupant target = order.Target;
+            if (target != null)
+            {
+                // The near side of the target: for a building, the footprint cell closest to the soldier.
+                order.Goal = GridDistance.ClosestCellInArea(target.Origin, target.Footprint, start);
+            }
 
             // Ends at the goal, or at the reachable cell closest to it when the goal cannot be reached.
             _pathfinder.TryFindPath(start, order.Goal, path);
-            Vector2Int end = path[path.Count - 1];
-            if (!CanStopAt(end))
+            _planning = order;
+            bool stopsOnPath = target == null ? CanStopAt(path[path.Count - 1]) : TrimAtFirstStopInRange(path);
+            if (!stopsOnPath)
             {
                 // The BFS spreads only through walkable cells, so the cell it finds is connected to the start: the
-                // second search always reaches it.
-                if (_stopCellSearch.TryFindNearest(end, _isSoldier, _canStopAt, out Vector2Int free))
+                // second search always reaches it. An approach takes the nearest free cell in range, else the nearest
+                // free cell at all; combat lets the soldier wait there until a cell in range frees up.
+                Vector2Int end = path[path.Count - 1];
+                Predicate<Vector2Int> acceptable = target == null ? _canStopAt : _canStopInRange;
+                if (_stopCellSearch.TryFindNearest(end, _isSoldier, acceptable, out Vector2Int free)
+                    || (target != null && _stopCellSearch.TryFindNearest(end, _isSoldier, _canStopAt, out free)))
                 {
                     _pathfinder.TryFindPath(start, free, path);
                 }
@@ -243,6 +344,26 @@ namespace StrategyDemo.Gameplay
             }
 
             order.NextIndex = FirstWaypoint(path);
+            _planning = null;
+        }
+
+        /// <summary>
+        /// Cuts <paramref name="path"/> after its first cell that is within range of the target being planned and free
+        /// to stop on, so a ranged soldier stops as soon as it can shoot. False (path unchanged) when there is none.
+        /// </summary>
+        private bool TrimAtFirstStopInRange(List<Vector2Int> path)
+        {
+            for (int i = 0; i < path.Count; i++)
+            {
+                if (CanStopInRange(path[i]))
+                {
+                    // Removing the tail shifts nothing and allocates nothing.
+                    path.RemoveRange(i + 1, path.Count - i - 1);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static int FirstWaypoint(List<Vector2Int> path)
@@ -366,6 +487,12 @@ namespace StrategyDemo.Gameplay
         private bool CanStopAt(Vector2Int cell)
         {
             return _pathfinder.IsWalkable(cell) && _reservations.OwnerOf(cell) == GridMap.EmptyId;
+        }
+
+        private bool CanStopInRange(Vector2Int cell)
+        {
+            IBoardOccupant target = _planning.Target;
+            return CanStopAt(cell) && GridDistance.ToArea(cell, target.Origin, target.Footprint) <= _planning.Range;
         }
 
         private bool IsSoldier(int occupantId)

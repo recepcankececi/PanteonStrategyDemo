@@ -354,11 +354,52 @@ namespace StrategyDemo.Tests.EditMode
             return definition;
         }
 
+        [Test]
+        public void GridFreedUnderStillPreview_PreviewTurnsValid()
+        {
+            int blockerId = _occupants.NextId();
+            _grid.Occupy(new Vector2Int(4, 4), Vector2Int.one, blockerId);
+            _placer.Begin(_barracks);
+            _placer.MoveTo(new Vector2Int(3, 3));
+            Assert.That(_placer.IsCandidateValid, Is.False);
+            _changedCount = 0;
+
+            // The building under the preview is destroyed while the pointer stands still (R10).
+            _grid.Release(new Vector2Int(4, 4), Vector2Int.one, blockerId);
+
+            Assert.That(_placer.IsCandidateValid, Is.True);
+            Assert.That(_changedCount, Is.EqualTo(1), "The ghost hears of it and turns green.");
+        }
+
+        [Test]
+        public void GridChangedElsewhere_DoesNotNotify()
+        {
+            _placer.Begin(_barracks);
+            _placer.MoveTo(new Vector2Int(0, 0));
+            _changedCount = 0;
+
+            _grid.Occupy(new Vector2Int(8, 6), Vector2Int.one, _occupants.NextId());
+
+            Assert.That(_placer.IsCandidateValid, Is.True);
+            Assert.That(_changedCount, Is.Zero);
+        }
+
+        [Test]
+        public void GridChangedWhileNotPlacing_IsIgnored()
+        {
+            Assert.DoesNotThrow(() => _grid.Occupy(new Vector2Int(1, 1), Vector2Int.one, _occupants.NextId()));
+            Assert.That(_changedCount, Is.Zero);
+        }
+
         private sealed class ThrowingFactory : IBuildingFactory
         {
             public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
             {
                 throw new InvalidOperationException("Simulated failure while creating the scene object.");
+            }
+
+            public void Release(Building building)
+            {
             }
         }
 
@@ -372,6 +413,10 @@ namespace StrategyDemo.Tests.EditMode
             {
                 Created.Add((definition, origin, occupantId));
                 return new FakeOccupant(occupantId, origin, definition.Footprint);
+            }
+
+            public void Release(Building building)
+            {
             }
         }
     }

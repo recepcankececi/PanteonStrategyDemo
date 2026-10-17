@@ -21,6 +21,8 @@ namespace StrategyDemo.App
         [SerializeField] private Building _buildingPrefab;
         [SerializeField, Tooltip("Board container placed buildings are parented under.")]
         private Transform _buildingsRoot;
+        [SerializeField, Tooltip("Board container pooled (inactive) buildings wait under.")]
+        private Transform _buildingPoolRoot;
         [SerializeField] private PlacementGhost _placementGhost;
         [SerializeField] private Unit _unitPrefab;
         [SerializeField, Tooltip("Board container produced soldiers are parented under.")]
@@ -30,6 +32,7 @@ namespace StrategyDemo.App
         [SerializeField] private SelectionHighlight _selectionHighlight;
         [SerializeField] private SelectionBox _selectionBox;
         [SerializeField] private UnitMovementDriver _movementDriver;
+        [SerializeField] private UnitCombatDriver _combatDriver;
         [SerializeField] private InfoPanel _infoPanel;
         [SerializeField] private InputController _inputController;
 
@@ -39,9 +42,10 @@ namespace StrategyDemo.App
         {
             // Fail at start-up with a clear message instead of a NullReferenceException deep in a system.
             if (_gridConfig == null || _buildingCatalog == null || _gridView == null || _cameraFitter == null || _productionMenu == null
-                || _buildingPrefab == null || _buildingsRoot == null || _placementGhost == null || _unitPrefab == null
-                || _unitsRoot == null || _unitPoolRoot == null || _selectionHighlight == null || _selectionBox == null
-                || _movementDriver == null || _infoPanel == null || _inputController == null)
+                || _buildingPrefab == null || _buildingsRoot == null || _buildingPoolRoot == null || _placementGhost == null
+                || _unitPrefab == null || _unitsRoot == null || _unitPoolRoot == null || _selectionHighlight == null
+                || _selectionBox == null || _movementDriver == null || _combatDriver == null || _infoPanel == null
+                || _inputController == null)
             {
                 Debug.LogError($"{nameof(GameBootstrap)} has unassigned references; the game cannot start.", this);
                 enabled = false;
@@ -57,7 +61,7 @@ namespace StrategyDemo.App
 
                 // One registry for buildings and soldiers: both hold grid cells, and a clicked cell must lead to either.
                 var occupants = new OccupantRegistry();
-                var buildingFactory = new BuildingFactory(_buildingPrefab, _buildingsRoot, _gridView);
+                var buildingFactory = new BuildingFactory(_buildingPrefab, _buildingsRoot, _buildingPoolRoot, _gridView);
                 _placer = new BuildingPlacer(gridMap, occupants, buildingFactory);
                 _placementGhost.Init(_placer, _gridView);
 
@@ -74,12 +78,17 @@ namespace StrategyDemo.App
                 _selectionBox.Init(selectionInput, _gridView);
                 _infoPanel.Init(selection, unitProducer);
 
+                // The one remove path for whatever dies; combat deals the damage and calls it (R9, R10).
+                var despawner = new OccupantDespawner(gridMap, occupants, movement, selection, unitFactory, buildingFactory);
+                var combat = new UnitCombat(movement, new FreeForAllAttackRule(), despawner);
+                _combatDriver.Init(combat);
+
                 // The fitter's camera is the one drawing the board, so it is the one that maps the pointer.
                 _inputController.Init(
                     _cameraFitter.GetComponent<Camera>(),
                     new PlacementInputHandler(_placer, _gridView),
                     selectionInput,
-                    new CommandInputHandler(selection, movement, _gridView));
+                    new CommandInputHandler(selection, movement, combat, gridMap, occupants, _gridView));
             }
             catch (Exception exception)
             {

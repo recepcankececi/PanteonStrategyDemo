@@ -11,8 +11,8 @@ namespace StrategyDemo.Gameplay
     /// waiting. Active soldiers live under the units container, released ones under the pool container.
     /// </summary>
     /// <remarks>
-    /// Soldiers are produced without limit (R3) and destroyed in combat (M6), the create/destroy churn pooling
-    /// exists for. <see cref="Release"/> is the return path M6 will call on death.
+    /// Soldiers are produced without limit (R3) and destroyed in combat (R10), the create/destroy churn pooling
+    /// exists for. <see cref="Release"/> is the return path <see cref="OccupantDespawner"/> takes on death.
     /// </remarks>
     public sealed class UnitFactory : IUnitFactory
     {
@@ -62,9 +62,7 @@ namespace StrategyDemo.Gameplay
             return unit;
         }
 
-        /// <summary>Takes <paramref name="unit"/> off the board and keeps it for reuse. Its grid cell is the caller's to free.</summary>
-        /// <exception cref="ArgumentNullException"><paramref name="unit"/> is null.</exception>
-        /// <exception cref="InvalidOperationException"><paramref name="unit"/> is not active from this factory.</exception>
+        /// <inheritdoc/>
         public void Release(Unit unit)
         {
             _pool.Release(unit);

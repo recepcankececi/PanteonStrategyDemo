@@ -118,7 +118,7 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_image.sprite, Is.SameAs(_barracks.Sprite));
             Assert.That(_image.enabled, Is.True);
             Assert.That(_nameLabel.text, Is.EqualTo(_barracks.DisplayName));
-            Assert.That(Text(_healthLabel), Is.EqualTo($"HP {_barracks.MaxHealth}"));
+            Assert.That(Text(_healthLabel), Is.EqualTo($"HP {_barracks.MaxHealth}/{_barracks.MaxHealth}"));
             Assert.That(Text(_footprintLabel), Is.EqualTo("Size 3×2"));
             Assert.That(_damageLabel.gameObject.activeSelf, Is.False);
         }
@@ -150,7 +150,7 @@ namespace StrategyDemo.Tests.EditMode
             SelectUnit(_soldiers[1], new Vector2Int(6, 6));
 
             Assert.That(_nameLabel.text, Is.EqualTo("Soldier2"));
-            Assert.That(Text(_healthLabel), Is.EqualTo("HP 10"));
+            Assert.That(Text(_healthLabel), Is.EqualTo("HP 10/10"));
             Assert.That(Text(_footprintLabel), Is.EqualTo("Size 1×1"));
             Assert.That(_damageLabel.gameObject.activeSelf, Is.True);
             Assert.That(Text(_damageLabel), Is.EqualTo("Damage 5"));
@@ -221,9 +221,77 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_statusLabel.text, Is.Empty);
         }
 
-        private void SelectBuilding(BuildingDefinition definition, Vector2Int origin)
+        [Test]
+        public void Health_SelectedBuildingTakesDamage_LabelFollowsLive()
         {
-            var building = new GameObject(definition.name, typeof(SpriteRenderer)).AddComponent<Building>();
+            Building building = SelectBuilding(_barracks, new Vector2Int(3, 3));
+
+            building.Health.TakeDamage(30);
+
+            Assert.That(Text(_healthLabel), Is.EqualTo($"HP {_barracks.MaxHealth - 30}/{_barracks.MaxHealth}"));
+        }
+
+        [Test]
+        public void Health_AfterSelectionChanged_OldObjectNoLongerUpdatesLabel()
+        {
+            Building building = SelectBuilding(_barracks, new Vector2Int(3, 3));
+            SelectUnit(_soldiers[0], new Vector2Int(0, 0));
+
+            building.Health.TakeDamage(30);
+
+            Assert.That(Text(_healthLabel), Is.EqualTo("HP 10/10"));
+        }
+
+        [Test]
+        public void Refresh_SeveralSoldiersSelected_ShowsGroupHeaderWithFirstImageAndNoStats()
+        {
+            SelectUnit(_soldiers[1], new Vector2Int(0, 0));
+            SelectUnit(_soldiers[2], new Vector2Int(1, 0));
+            SelectUnit(_soldiers[0], new Vector2Int(2, 0));
+
+            _selection.SelectSoldiersIn(new RectInt(0, 0, 3, 1));
+            _panel.Refresh();
+
+            Assert.That(Text(_nameLabel), Is.EqualTo("3 soldiers selected"));
+            Assert.That(_image.sprite, Is.SameAs(_soldiers[1].Sprite), "Box order: bottom row, left to right.");
+            Assert.That(_healthLabel.gameObject.activeSelf, Is.False);
+            Assert.That(_footprintLabel.gameObject.activeSelf, Is.False);
+            Assert.That(_damageLabel.gameObject.activeSelf, Is.False);
+            Assert.That(_productionSection.activeSelf, Is.False);
+        }
+
+        [Test]
+        public void Refresh_GroupShrinksToOne_ShowsThatSoldiersStatsAgain()
+        {
+            SelectUnit(_soldiers[0], new Vector2Int(0, 0));
+            Unit second = SelectUnit(_soldiers[1], new Vector2Int(1, 0));
+            _selection.SelectSoldiersIn(new RectInt(0, 0, 2, 1));
+
+            // One of the two was destroyed (the despawner removes it from the selection).
+            _selection.Remove(second);
+            _panel.Refresh();
+
+            Assert.That(Text(_nameLabel), Is.EqualTo(_soldiers[0].DisplayName));
+            Assert.That(_healthLabel.gameObject.activeSelf, Is.True);
+            Assert.That(Text(_healthLabel), Is.EqualTo("HP 10/10"));
+        }
+
+        [Test]
+        public void Refresh_SelectedObjectRemoved_ShowsEmptyState()
+        {
+            Building building = SelectBuilding(_barracks, new Vector2Int(3, 3));
+
+            _selection.Remove(building);
+            _panel.Refresh();
+
+            Assert.That(_emptyState.activeSelf, Is.True);
+            Assert.That(_details.activeSelf, Is.False);
+            Assert.That(_panel.Rows, Is.Empty);
+        }
+
+        private Building SelectBuilding(BuildingDefinition definition, Vector2Int origin)
+        {
+            Building building = TestBoard.CreateBuildingObject(definition.name);
             SceneManager.MoveGameObjectToScene(building.gameObject, _scene);
             int id = _registry.NextId();
             building.Init(definition, origin, id, Vector3.zero);
@@ -231,9 +299,10 @@ namespace StrategyDemo.Tests.EditMode
             _registry.Add(building);
             _selection.SelectAt(origin);
             _panel.Refresh();
+            return building;
         }
 
-        private void SelectUnit(UnitDefinition definition, Vector2Int cell)
+        private Unit SelectUnit(UnitDefinition definition, Vector2Int cell)
         {
             Unit unit = TestBoard.CreateUnitObject(definition.name);
             SceneManager.MoveGameObjectToScene(unit.gameObject, _scene);
@@ -243,6 +312,7 @@ namespace StrategyDemo.Tests.EditMode
             _registry.Add(unit);
             _selection.SelectAt(cell);
             _panel.Refresh();
+            return unit;
         }
 
         private void FillEveryFreeCell()
@@ -313,6 +383,10 @@ namespace StrategyDemo.Tests.EditMode
             public IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId)
             {
                 return new FakeUnit(definition, occupantId, cell);
+            }
+
+            public void Release(Unit unit)
+            {
             }
         }
     }

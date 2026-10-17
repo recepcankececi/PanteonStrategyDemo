@@ -97,6 +97,19 @@ namespace StrategyDemo.Gameplay
             SelectionChanged?.Invoke();
         }
 
+        /// <summary>
+        /// Drops <paramref name="occupant"/> from the selection (it was destroyed); the rest stays selected. Ignored when
+        /// it is not selected.
+        /// </summary>
+        public void Remove(IBoardOccupant occupant)
+        {
+            // List.Remove uses Equals, which for these objects means "the same object".
+            if (occupant != null && _selected.Remove(occupant))
+            {
+                SelectionChanged?.Invoke();
+            }
+        }
+
         /// <summary>Clears the selection (e.g. Esc). Ignored when nothing is selected.</summary>
         public void Clear()
         {
@@ -129,14 +142,7 @@ namespace StrategyDemo.Gameplay
 
         private IBoardOccupant OccupantOf(Vector2Int cell)
         {
-            if (!_grid.IsInside(cell))
-            {
-                return null;
-            }
-
-            int id = _grid.GetOccupant(cell);
-            // An id without a registered object would be a bookkeeping bug; treat it as empty ground.
-            return id != GridMap.EmptyId && _occupants.TryGet(id, out IBoardOccupant occupant) ? occupant : null;
+            return _occupants.TryGetAt(_grid, cell, out IBoardOccupant occupant) ? occupant : null;
         }
     }
 }
