@@ -442,6 +442,56 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
+        public void MoveGroup_RedirectedOffCentreWithDiagonalFirstStep_NeverStepsBack()
+        {
+            // Walking right from (0,0), then redirected while still in cell (0,0) but right of its centre. The new path
+            // starts with the diagonal step (0,0) → (1,1): the soldier heads straight for (1,1), never back to its own
+            // centre first (the line stays inside the 2×2 block that no-corner-cutting keeps free of buildings).
+            Unit unit = Spawn(new Vector2Int(0, 0));
+            Move(new Vector2Int(9, 0), unit);
+            _movement.Tick(0.1f);
+            Assert.That(BodyCell(unit), Is.EqualTo(new Vector2Int(0, 0)), "Precondition: still in the start cell.");
+            Assert.That(unit.transform.position.x, Is.GreaterThan(0.5f + Tolerance), "Precondition: off its centre.");
+
+            Move(new Vector2Int(5, 5), unit);
+            Vector3 firstWaypoint = _board.View.CellToWorld(new Vector2Int(1, 1));
+            Vector3 start = unit.transform.position;
+            float distance = Vector3.Distance(unit.transform.position, firstWaypoint);
+            // Stops one frame short: the frame that reaches (1,1) walks on past it towards (2,2).
+            float stepPerFrame = _soldier.MoveSpeed * GridConfig.CellWorldSize * FrameTime;
+            while (distance > stepPerFrame)
+            {
+                _movement.Tick(FrameTime);
+                float next = Vector3.Distance(unit.transform.position, firstWaypoint);
+                Assert.That(next, Is.LessThan(distance), "The soldier moved away from its next cell.");
+                distance = next;
+            }
+
+            // The first step really was the diagonal one: a straight step to (1,0) would never have gained height.
+            Assert.That(unit.transform.position.y, Is.GreaterThan(start.y + 0.5f));
+        }
+
+        [Test]
+        public void Tick_BuildingPlacedOnSideCellOfDiagonalStep_RepathsWithoutEnteringIt()
+        {
+            // Redirected off-centre onto a diagonal path, then a building lands on a side cell of that first diagonal
+            // step: the straight line would cross it, so the soldier must plan again instead of walking through.
+            Unit unit = Spawn(new Vector2Int(0, 0));
+            Move(new Vector2Int(9, 0), unit);
+            _movement.Tick(0.1f);
+            Move(new Vector2Int(5, 5), unit);
+            PlaceBuilding(new Vector2Int(1, 0), Vector2Int.one);
+
+            RunUntilIdle(() =>
+            {
+                Assert.That(BuildingAt(BodyCell(unit)), Is.False, "The soldier's centre entered a building.");
+                AssertGridMatchesSoldiers();
+            });
+
+            Assert.That(unit.Origin, Is.EqualTo(new Vector2Int(5, 5)));
+        }
+
+        [Test]
         public void MoveGroup_OwnCell_FinishesWithoutMoving()
         {
             Unit unit = Spawn(new Vector2Int(3, 3));
@@ -462,13 +512,13 @@ namespace StrategyDemo.Tests.EditMode
             Move(new Vector2Int(9, 7), a, b);
             _movement.Tick(FrameTime);
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < 50; i++)
+            AllocationAssert.None(() =>
             {
-                _movement.Tick(FrameTime);
-            }
-
-            Assert.That(GC.GetAllocatedBytesForCurrentThread() - before, Is.Zero);
+                for (int i = 0; i < 50; i++)
+                {
+                    _movement.Tick(FrameTime);
+                }
+            });
         }
 
         private Unit Spawn(Vector2Int cell)

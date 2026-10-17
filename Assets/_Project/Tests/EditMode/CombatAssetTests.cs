@@ -1,5 +1,6 @@
 using System.Linq;
 using NUnit.Framework;
+using StrategyDemo.Data;
 using StrategyDemo.Gameplay;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -8,13 +9,19 @@ using UnityEngine.SceneManagement;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Assets and scene objects combat relies on (M6): health bars and hit flashes on both prefabs, driver, pool.</summary>
+    /// <summary>
+    /// Assets and scene objects combat relies on: health bars and hit flashes on both prefabs, driver, pool (M6); the
+    /// pooled effect prefab, its settings and its scene objects (M7).
+    /// </summary>
     public class CombatAssetTests
     {
         private const string MainScenePath = "Assets/_Project/Scenes/Main.unity";
         private const string UnitPrefabPath = "Assets/_Project/Prefabs/Board/Unit.prefab";
         private const string BuildingPrefabPath = "Assets/_Project/Prefabs/Board/Building.prefab";
         private const string HealthBarSpritePath = "Assets/_Project/Art/Generated/Board/HealthBar.png";
+        private const string EffectPrefabPath = "Assets/_Project/Prefabs/Board/Effect.prefab";
+        private const string EffectSettingsPath = "Assets/_Project/ScriptableObjects/Effects/CombatEffectSettings.asset";
+        private const string UnitDataFolder = "Assets/_Project/ScriptableObjects/Units";
         private const string SystemsGroup = "--- Systems ---";
         private const string BoardGroup = "--- Board ---";
         private const string FxLayer = "FX";
@@ -87,6 +94,58 @@ namespace StrategyDemo.Tests.EditMode
         public void Board_HasBuildingPool()
         {
             Assert.That(Root(BoardGroup).transform.Find("Pool_Building"), Is.Not.Null, "Pool parents are named Pool_<Type> (CLAUDE.md).");
+        }
+
+        [Test]
+        public void EffectPrefab_IsOnePlainUnlitRendererOnFx()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(EffectPrefabPath);
+
+            Assert.That(prefab, Is.Not.Null);
+            Assert.That(prefab.GetComponents<Component>().Length, Is.EqualTo(2), "Transform and SpriteRenderer only.");
+            var renderer = prefab.GetComponent<SpriteRenderer>();
+            Assert.That(renderer.sortingLayerName, Is.EqualTo(FxLayer));
+            Assert.That(renderer.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial), "Same material as the board: it batches.");
+            Assert.That(renderer.drawMode, Is.EqualTo(SpriteDrawMode.Simple), "Stretched by scale, not by a tiled/sliced mesh.");
+        }
+
+        [Test]
+        public void EffectSettings_UseGeneratedBoardSprites()
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<CombatEffectSettings>(EffectSettingsPath);
+
+            Assert.That(settings, Is.Not.Null);
+            Assert.That(AssetDatabase.GetAssetPath(settings.TracerSprite), Is.EqualTo("Assets/_Project/Art/Generated/Board/Tracer.png"));
+            Assert.That(AssetDatabase.GetAssetPath(settings.BurstSprite), Is.EqualTo("Assets/_Project/Art/Generated/Board/DeathBurst.png"));
+            Assert.That(settings.BurstEndScale, Is.GreaterThan(settings.BurstStartScale), "The burst grows.");
+        }
+
+        [Test]
+        public void UnitData_OnlyRangedSoldiersFireTracers()
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(UnitDefinition), new[] { UnitDataFolder }))
+            {
+                var unit = AssetDatabase.LoadAssetAtPath<UnitDefinition>(AssetDatabase.GUIDToAssetPath(guid));
+                // A tracer shows a shot from afar; melee soldiers hit the cell next to them.
+                Assert.That(unit.FiresTracer, Is.EqualTo(unit.AttackRange > 1), unit.name);
+            }
+        }
+
+        [Test]
+        public void Board_HasCombatEffectsWithItsPool()
+        {
+            Transform board = Root(BoardGroup).transform;
+            Transform effects = board.Find("Effects");
+            Transform pool = board.Find("Pool_Effect");
+
+            Assert.That(effects, Is.Not.Null);
+            Assert.That(pool, Is.Not.Null, "Pool parents are named Pool_<Type> (CLAUDE.md).");
+            var component = effects.GetComponent<CombatEffects>();
+            Assert.That(component, Is.Not.Null);
+            var serialized = new SerializedObject(component);
+            Assert.That(AssetDatabase.GetAssetPath(serialized.FindProperty("_effectPrefab").objectReferenceValue), Is.EqualTo(EffectPrefabPath));
+            Assert.That(serialized.FindProperty("_poolRoot").objectReferenceValue, Is.SameAs(pool));
+            Assert.That(AssetDatabase.GetAssetPath(serialized.FindProperty("_settings").objectReferenceValue), Is.EqualTo(EffectSettingsPath));
         }
 
         private static Component Owner(GameObject prefab)

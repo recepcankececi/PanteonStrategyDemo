@@ -53,14 +53,13 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void Renderer2D_SortsTransparentObjectsAlongWorldY()
+        public void Renderer2D_UsesDefaultSorting()
         {
-            // Kept from ADR-004 for a stable draw order within one layer. Since ADR-007 no board sprite overlaps
-            // another, so this decides nothing visible today; it matters again if overlapping effects arrive.
+            // ADR-004's Y-sorting was removed in M7: the art is top-down (ADR-007), so nothing is "behind" anything.
+            // Layers and orders decide the draw order; only soldiers walking through each other overlap, briefly.
             var renderer = new SerializedObject(AssetDatabase.LoadMainAssetAtPath(Renderer2DPath));
 
-            Assert.That(renderer.FindProperty("m_TransparencySortMode").intValue, Is.EqualTo((int)TransparencySortMode.CustomAxis));
-            Assert.That(renderer.FindProperty("m_TransparencySortAxis").vector3Value, Is.EqualTo(Vector3.up));
+            Assert.That(renderer.FindProperty("m_TransparencySortMode").intValue, Is.EqualTo((int)TransparencySortMode.Default));
         }
     }
 }

@@ -1,9 +1,9 @@
-// Board sprites that are not objects: the ground tile, the board's closing edge, the white cell used for highlights
-// and the health bar strip.
+// Board sprites that are not objects: the ground tile, the board's closing edge, the white cell used for highlights,
+// the health bar strip and the combat effects (Scout tracer, destruction burst).
 'use strict';
 
 const C = require('./palette');
-const { CELL, svg, rect } = require('./svg');
+const { CELL, svg, rect, circle } = require('./svg');
 
 /**
  * Seamless one-cell field tile. Unity tiles it over the whole board, so the faint line on its top and left
@@ -57,6 +57,54 @@ function healthBar() {
   return svg(HEALTH_BAR_SIZE[0], HEALTH_BAR_SIZE[1], rect(0, 0, HEALTH_BAR_SIZE[0], HEALTH_BAR_SIZE[1], '#ffffff'));
 }
 
+/**
+ * Scout tracer: a white streak, opaque in the middle and fading at both ends. Unity stretches it along X from the
+ * shooter to the target and tints and fades it with SpriteRenderer.color (CombatEffects.cs), so it stays one atlas
+ * sprite on the shared material. Ends fade so the stretched streak has no hard edge.
+ */
+function tracer() {
+  const [w, h] = TRACER_SIZE;
+  return svg(w, h, [
+    '<defs><linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">',
+    '<stop offset="0" stop-color="#ffffff" stop-opacity="0"/>',
+    '<stop offset="0.3" stop-color="#ffffff" stop-opacity="1"/>',
+    '<stop offset="0.7" stop-color="#ffffff" stop-opacity="1"/>',
+    '<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>',
+    '</linearGradient></defs>',
+    rect(0, 0, w, h, 'url(#fade)', `rx="${h / 2}"`),
+  ].join('\n'));
+}
+
+/** Points of a star polygon centred on the canvas: alternating outer and inner radius, first spike pointing up. */
+function starPoints(spikes, outer, inner, turn) {
+  const points = [];
+  for (let i = 0; i < spikes * 2; i++) {
+    const radius = i % 2 === 0 ? outer : inner;
+    const angle = (Math.PI * i) / spikes + turn - Math.PI / 2;
+    points.push(`${(CELL / 2 + radius * Math.cos(angle)).toFixed(2)},${(CELL / 2 + radius * Math.sin(angle)).toFixed(2)}`);
+  }
+  return points.join(' ');
+}
+
+/**
+ * Destruction burst: a smoke ring behind two flame stars and a bright core, in the faction palette. Unity grows it and
+ * fades it out over a fraction of a second where a building or soldier was destroyed, scaled to the footprint.
+ */
+function deathBurst() {
+  const c = CELL / 2;
+  return svg(CELL, CELL, [
+    circle(c, c, 29, C.padDark, 'opacity="0.55"'),
+    circle(c, c, 22, C.pad, 'opacity="0.6"'),
+    `<polygon points="${starPoints(8, 27, 14, 0)}" fill="${C.redLight}"/>`,
+    `<polygon points="${starPoints(8, 19, 9, Math.PI / 8)}" fill="${C.yellow}"/>`,
+    circle(c, c, 7, C.glow),
+    circle(c, c, 3, '#ffffff'),
+  ].join('\n'));
+}
+
+// Pixel size of the tracer: long enough for a smooth fade, as thin as a bullet trail; stretched in Unity.
+const TRACER_SIZE = [32, 4];
+
 // Pixel size of the health bar: three quarters of a cell wide (a soldier's bar stays inside its cell), a few pixels tall.
 const HEALTH_BAR_SIZE = [48, 6];
 
@@ -65,4 +113,6 @@ module.exports = [
   { name: 'CellHighlight', cells: [1, 1], build: cellHighlight },
   { name: 'BoardEdge', cells: [1, 1], build: boardEdge },
   { name: 'HealthBar', size: HEALTH_BAR_SIZE, build: healthBar },
+  { name: 'Tracer', size: TRACER_SIZE, build: tracer },
+  { name: 'DeathBurst', cells: [1, 1], build: deathBurst },
 ];

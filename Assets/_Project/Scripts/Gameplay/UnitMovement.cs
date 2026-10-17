@@ -368,19 +368,11 @@ namespace StrategyDemo.Gameplay
 
         private static int FirstWaypoint(List<Vector2Int> path)
         {
-            // Path[0] is the cell the soldier is in, maybe off its centre (redirected mid-walk). A straight line from
-            // anywhere in a cell to a side neighbour's centre stays inside those two cells, so it heads there directly;
-            // a line to a diagonal neighbour could clip a building's corner, so it first returns to its own centre.
-            if (path.Count > 1)
-            {
-                Vector2Int step = path[1] - path[0];
-                if (step.x == 0 || step.y == 0)
-                {
-                    return 1;
-                }
-            }
-
-            return 0;
+            // Path[0] is the cell the soldier is in, maybe off its centre (redirected mid-walk), so it heads straight
+            // for path[1]. That line stays inside the cells of the step: a side step's two cells, or for a diagonal
+            // step the 2×2 block whose side cells the pathfinder keeps free (no corner cutting). Only a one-cell path
+            // (stopping where it is) walks back to its own centre.
+            return path.Count > 1 ? 1 : 0;
         }
 
         private void Advance(MoveOrder order, float deltaTime)
@@ -429,7 +421,28 @@ namespace StrategyDemo.Gameplay
 
         private bool IsNextCellWalkable(MoveOrder order)
         {
-            return order.HasArrived || _pathfinder.IsWalkable(order.Path[order.NextIndex]);
+            if (order.HasArrived)
+            {
+                return true;
+            }
+
+            Vector2Int next = order.Path[order.NextIndex];
+            if (!_pathfinder.IsWalkable(next))
+            {
+                return false;
+            }
+
+            // Walking back to its own centre never leaves its own cell.
+            if (order.NextIndex == 0)
+            {
+                return true;
+            }
+
+            // A diagonal step needs its two side cells open, as when it was planned (no corner cutting): from an
+            // off-centre start the line really crosses one of them, so a building placed there since means a new plan.
+            Vector2Int from = order.Path[order.NextIndex - 1];
+            return from.x == next.x || from.y == next.y
+                || (_pathfinder.IsWalkable(new Vector2Int(next.x, from.y)) && _pathfinder.IsWalkable(new Vector2Int(from.x, next.y)));
         }
 
         /// <summary>Makes the grid follow the soldier's centre. Returns true when the grid changed.</summary>

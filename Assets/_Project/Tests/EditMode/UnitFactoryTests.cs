@@ -48,6 +48,21 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
+        public void ReturnToPool_ThreeHealthListenersAfterWarmUp_AllocatesNothing()
+        {
+            // Warm-up: the pool's containers grow on the first release.
+            var warm = (Unit)_factory.Create(_soldier, new Vector2Int(1, 1), 1);
+            ((IDespawnable)warm).ReturnToPool();
+            var unit = (Unit)_factory.Create(_soldier, new Vector2Int(2, 1), 2);
+            // A third listener, like the information panel following a selected soldier: removing one listener of
+            // three would allocate a new delegate, so the reset must drop them all at once instead.
+            unit.Health.Changed += ThirdListener;
+
+            AllocationAssert.None(() => ((IDespawnable)unit).ReturnToPool());
+            Assert.That(unit.name, Is.EqualTo("Unit"), "Renamed to the prefab name from a cached string.");
+        }
+
+        [Test]
         public void Create_PutsActiveSoldierUnderUnitsWithDataNameAndCell()
         {
             var unit = (Unit)_factory.Create(_soldier, new Vector2Int(2, 1), 7);
@@ -147,6 +162,10 @@ namespace StrategyDemo.Tests.EditMode
         public void Create_NullDefinition_Throws()
         {
             Assert.Throws<ArgumentNullException>(() => _factory.Create(null, Vector2Int.zero, 1));
+        }
+
+        private static void ThirdListener()
+        {
         }
     }
 }

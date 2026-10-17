@@ -33,6 +33,7 @@ namespace StrategyDemo.App
         [SerializeField] private SelectionBox _selectionBox;
         [SerializeField] private UnitMovementDriver _movementDriver;
         [SerializeField] private UnitCombatDriver _combatDriver;
+        [SerializeField] private CombatEffects _combatEffects;
         [SerializeField] private InfoPanel _infoPanel;
         [SerializeField] private InputController _inputController;
 
@@ -44,7 +45,7 @@ namespace StrategyDemo.App
             if (_gridConfig == null || _buildingCatalog == null || _gridView == null || _cameraFitter == null || _productionMenu == null
                 || _buildingPrefab == null || _buildingsRoot == null || _buildingPoolRoot == null || _placementGhost == null
                 || _unitPrefab == null || _unitsRoot == null || _unitPoolRoot == null || _selectionHighlight == null
-                || _selectionBox == null || _movementDriver == null || _combatDriver == null || _infoPanel == null
+                || _selectionBox == null || _movementDriver == null || _combatDriver == null || _combatEffects == null || _infoPanel == null
                 || _inputController == null)
             {
                 Debug.LogError($"{nameof(GameBootstrap)} has unassigned references; the game cannot start.", this);
@@ -79,9 +80,10 @@ namespace StrategyDemo.App
                 _infoPanel.Init(selection, unitProducer);
 
                 // The one remove path for whatever dies; combat deals the damage and calls it (R9, R10).
-                var despawner = new OccupantDespawner(gridMap, occupants, movement, selection, unitFactory, buildingFactory);
+                var despawner = new OccupantDespawner(gridMap, occupants, movement, selection);
                 var combat = new UnitCombat(movement, new FreeForAllAttackRule(), despawner);
                 _combatDriver.Init(combat);
+                _combatEffects.Init(combat, despawner);
 
                 // The fitter's camera is the one drawing the board, so it is the one that maps the pointer.
                 _inputController.Init(

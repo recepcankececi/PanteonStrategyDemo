@@ -17,6 +17,8 @@ namespace StrategyDemo.Gameplay
 
         private readonly Health _health = new Health();
         private SpriteRenderer _renderer;
+        // The factory this building goes back to when it is destroyed; null while in the pool.
+        private IBuildingFactory _owner;
 
         /// <summary>Type of this building; null while waiting in the pool.</summary>
         public BuildingDefinition Definition { get; private set; }
@@ -45,9 +47,11 @@ namespace StrategyDemo.Gameplay
 
         /// <summary>Shows <paramref name="definition"/> standing on the area at <paramref name="origin"/>, at full health.</summary>
         /// <param name="worldPosition">Centre of the area; the sprite's pivot goes here.</param>
+        /// <param name="owner">Factory that <see cref="IDespawnable.ReturnToPool"/> hands the building back to; null only in tests
+        /// that never despawn it.</param>
         /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The health bar or hit flash is not assigned.</exception>
-        public void Init(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector3 worldPosition)
+        public void Init(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector3 worldPosition, IBuildingFactory owner = null)
         {
             if (definition == null)
             {
@@ -60,6 +64,7 @@ namespace StrategyDemo.Gameplay
             }
 
             Definition = definition;
+            _owner = owner;
             Origin = origin;
             OccupantId = occupantId;
             // The id keeps names unique in the hierarchy, e.g. "Barracks_3".
@@ -77,9 +82,29 @@ namespace StrategyDemo.Gameplay
             _healthBar.SetPinned(pinned);
         }
 
+        // Explicit: only the despawner, which holds an IDespawnable, can take the object off the board; a caller
+        // holding the concrete type cannot skip the registry, selection and event steps.
+        /// <inheritdoc/>
+        void IDespawnable.LeaveBoard(DespawnContext board)
+        {
+            // A building holds nothing but its footprint cells.
+            board.Grid.Release(Origin, Footprint, OccupantId);
+        }
+
+        /// <inheritdoc/>
+        void IDespawnable.ReturnToPool()
+        {
+            // Read first: the factory resets the building, which clears the owner.
+            IBuildingFactory owner = _owner ?? throw new InvalidOperationException($"{nameof(Building)} '{name}' was not made by a factory.");
+            owner.Release(this);
+        }
+
         /// <summary>Clears all state before the building goes back to the pool, so reuse cannot leak the old building.</summary>
         public void ResetState()
         {
+            // Clear first: it drops every listener at once, so the views' unsubscribes below find nothing to remove.
+            // Removing one listener of several would allocate a new delegate on every destruction.
+            _health.Clear();
             if (_healthBar != null)
             {
                 _healthBar.Unbind();
@@ -90,9 +115,9 @@ namespace StrategyDemo.Gameplay
                 _hitFlash.Unbind();
             }
 
-            _health.Clear();
             Renderer.sprite = null;
             Definition = null;
+            _owner = null;
             OccupantId = 0;
             Origin = default;
         }

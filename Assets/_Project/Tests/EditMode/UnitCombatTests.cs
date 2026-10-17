@@ -16,6 +16,8 @@ namespace StrategyDemo.Tests.EditMode
     {
         private const int Width = 10;
         private const int Height = 8;
+        // Ten seconds of frames: far longer than any chase on this board.
+        private const int MaxChaseFrames = 500;
 
         private CombatWorld _world;
         private UnitDefinition _assault;
@@ -90,6 +92,24 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(CombatWorld.DistanceTo(soldier, barracks), Is.EqualTo(1));
             Assert.That(_world.Movement.IsMoving(soldier), Is.False, "Attacks only while standing.");
             Assert.That(barracks.Health.Current, Is.EqualTo(90), "The first hit lands on arrival.");
+        }
+
+        [Test]
+        public void Hit_RaisesHitLandedBeforeDamage_EvenOnTheFatalHit()
+        {
+            Building tower = _world.Place(new Vector2Int(5, 5), Vector2Int.one, 10);
+            Unit assault = _world.Spawn(new Vector2Int(4, 5), _assault);
+            var hits = new List<(Unit attacker, IDamageable target, int healthBefore)>();
+            Combat.HitLanded += (attacker, target) => hits.Add((attacker, target, target.Health.Current));
+
+            Combat.Attack(new IBoardOccupant[] { assault }, tower);
+            _world.Step();
+
+            Assert.That(hits.Count, Is.EqualTo(1));
+            Assert.That(hits[0].attacker, Is.SameAs(assault));
+            Assert.That(hits[0].target, Is.SameAs(tower));
+            Assert.That(hits[0].healthBefore, Is.EqualTo(10), "Listeners see the target before the hit, still alive.");
+            Assert.That(_world.IsRegistered(tower), Is.False, "The 10-damage hit was fatal.");
         }
 
         [Test]
@@ -436,19 +456,26 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Tick_ChaseOfWalkingSoldierEndingInKill_AllocatesNothing()
         {
+            // Warm-up: one full chase and kill first, so pools and lists have grown (their first growth allocates once).
+            Unit warmTarget = _world.Spawn(new Vector2Int(9, 0), _world.Board.Unit("WarmUp", health: 3));
+            Unit warmChaser = _world.Spawn(new Vector2Int(9, 2), _assault);
+            Combat.Attack(new IBoardOccupant[] { warmChaser }, warmTarget);
+            _world.RunUntil(() => Combat.AttackerCount == 0 && _world.Movement.MovingCount == 0, "the warm-up kill");
+
             Unit target = _world.Spawn(new Vector2Int(5, 0), _world.Board.Unit("Fragile", health: 3));
             Unit chaser = _world.Spawn(new Vector2Int(0, 0), _assault);
             _world.Selection.SelectAt(new Vector2Int(5, 0));
             _world.Movement.MoveGroup(new IBoardOccupant[] { target }, new Vector2Int(9, 7));
             Combat.Attack(new IBoardOccupant[] { chaser }, target);
             _world.Step();
-            // Created before measuring: a lambda is an allocation of the test, not of the game.
-            Func<bool> targetDied = () => Combat.AttackerCount == 0;
-
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            _world.RunUntil(targetDied, "the target dies");
-
-            Assert.That(GC.GetAllocatedBytesForCurrentThread() - before, Is.Zero);
+            // Plain Step calls, not RunUntil: that test helper allocates by itself, which would hide what the game does.
+            AllocationAssert.None(() =>
+            {
+                for (int frame = 0; frame < MaxChaseFrames && Combat.AttackerCount > 0; frame++)
+                {
+                    _world.Step();
+                }
+            });
             Assert.That(_world.IsRegistered(target), Is.False);
             Assert.That(_world.Selection.Selected, Is.Null);
         }
@@ -483,13 +510,13 @@ namespace StrategyDemo.Tests.EditMode
             Building barracks = _world.Place(new Vector2Int(6, 3), new Vector2Int(2, 2), 100000);
             Unit a = _world.Spawn(new Vector2Int(0, 0), _weakling);
             Unit b = _world.Spawn(new Vector2Int(0, 7), _weakling);
+            // Warm-up: one finished walk, so the move-order pool has grown (its first growth allocates once).
+            _world.Movement.MoveGroup(new IBoardOccupant[] { a, b }, new Vector2Int(0, 1));
+            _world.RunUntil(() => _world.Movement.MovingCount == 0, "the warm-up walk");
             Combat.Attack(new IBoardOccupant[] { a, b }, barracks);
             _world.Run(0.1f);
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            _world.Run(4f);
-
-            Assert.That(GC.GetAllocatedBytesForCurrentThread() - before, Is.Zero);
+            AllocationAssert.None(() => _world.Run(4f));
             Assert.That(Combat.StateOf(a), Is.EqualTo(CombatState.Attacking), "The run covered chasing and attacking.");
         }
     }

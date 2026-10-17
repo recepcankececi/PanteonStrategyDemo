@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7dc0a3659ebdb14dbfbbed1a4730c3c, type: 3}
+  m_Name: CombatEffectSettings
+  m_EditorClassIdentifier: StrategyDemo.Data::StrategyDemo.Data.CombatEffectSettings
+  _tracerSprite: {fileID: 21300000, guid: d2ad3df7d0fb0b8488d847d9afa172af, type: 3}
+  _tracerColor: {r: 1, g: 0.89, b: 0.48, a: 1}
+  _tracerDuration: 0.12
+  _burstSprite: {fileID: 21300000, guid: d93435f5a74cf7e4ab6df2d7afa9162a, type: 3}
+  _burstDuration: 0.45
+  _burstStartScale: 0.4
+  _burstEndScale: 1.1

@@ -196,6 +196,19 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
+        public void SystemsGroup_HasMinimumWindowSizeAtLeastHalfHd()
+        {
+            // Found by type name, like the bootstrap: App is not referenced by the tests.
+            MonoBehaviour guard = Root(SystemsGroup).GetComponentsInChildren<MonoBehaviour>(true)
+                .SingleOrDefault(component => component.GetType().Name == "MinimumWindowSize");
+            Assert.That(guard, Is.Not.Null, "T2: the resizable window must not shrink until text is unreadable.");
+
+            Vector2Int minimum = new SerializedObject(guard).FindProperty("_minimum").vector2IntValue;
+            Assert.That(minimum.x, Is.GreaterThanOrEqualTo(960));
+            Assert.That(minimum.y, Is.GreaterThanOrEqualTo(540));
+        }
+
+        [Test]
         public void SystemsGroup_HasGameBootstrapWithAllReferencesAssigned()
         {
             // Found by type name: the test assembly may not reference App (ADR-001 Karar 3).

@@ -33,7 +33,7 @@ namespace StrategyDemo.Tests.EditMode
             _reservations = new CellReservations(10, 8);
             _selection = new SelectionService(_grid, _registry);
             _movement = new UnitMovement(_grid, _registry, _reservations, _board.View);
-            var despawner = new OccupantDespawner(_grid, _registry, _movement, _selection, new NullUnitFactory(), new NullBuildingFactory());
+            var despawner = new OccupantDespawner(_grid, _registry, _movement, _selection);
             _combat = new UnitCombat(_movement, new FreeForAllAttackRule(), despawner);
             _handler = new CommandInputHandler(_selection, _movement, _combat, _grid, _registry, _board.View);
 

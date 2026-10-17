@@ -21,6 +21,7 @@ namespace StrategyDemo.Gameplay
         private SpriteRenderer _renderer;
         private Health _health;
         private float _remaining;
+        private Action<int> _damagedHandler;
 
         /// <summary>True while a flash is fading.</summary>
         public bool IsPlaying => _remaining > 0f;
@@ -36,7 +37,7 @@ namespace StrategyDemo.Gameplay
 
             Unbind();
             _health = health;
-            _health.Damaged += HandleDamaged;
+            _health.Damaged += DamagedHandler;
         }
 
         /// <summary>Stops listening and restores the normal colour; the pooled owner calls this on release.</summary>
@@ -44,7 +45,7 @@ namespace StrategyDemo.Gameplay
         {
             if (_health != null)
             {
-                _health.Damaged -= HandleDamaged;
+                _health.Damaged -= DamagedHandler;
                 _health = null;
             }
 
@@ -62,7 +63,8 @@ namespace StrategyDemo.Gameplay
         /// <summary>Advances the fade by <paramref name="deltaTime"/> seconds. Internal so EditMode tests can step it.</summary>
         internal void Advance(float deltaTime)
         {
-            if (!IsPlaying)
+            // A negative frame time (an editor quirk, see UnitMovementDriver) must not make the flash longer.
+            if (!IsPlaying || deltaTime <= 0f)
             {
                 return;
             }
@@ -83,6 +85,9 @@ namespace StrategyDemo.Gameplay
             Renderer.color = Color.white;
             enabled = false;
         }
+
+        // Created once: "-= HandleDamaged" would convert the method group into a new delegate on every unbind.
+        private Action<int> DamagedHandler => _damagedHandler ??= HandleDamaged;
 
         private void HandleDamaged(int amount)
         {
@@ -107,7 +112,7 @@ namespace StrategyDemo.Gameplay
         {
             if (_health != null)
             {
-                _health.Damaged -= HandleDamaged;
+                _health.Damaged -= DamagedHandler;
             }
         }
 

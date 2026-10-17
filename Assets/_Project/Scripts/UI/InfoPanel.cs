@@ -43,6 +43,7 @@ namespace StrategyDemo.UI
         private bool _isSubscribed;
         // Health shown in the HP label, followed live while its object stays selected.
         private Health _shownHealth;
+        private Action _showHealthHandler;
 
         /// <summary>Production rows currently shown, top to bottom.</summary>
         internal IReadOnlyList<UnitProductionItemView> Rows => _rows;
@@ -172,7 +173,7 @@ namespace StrategyDemo.UI
         private void FollowHealth(Health health)
         {
             _shownHealth = health;
-            _shownHealth.Changed += ShowHealth;
+            _shownHealth.Changed += ShowHealthHandler;
             ShowHealth();
         }
 
@@ -180,10 +181,14 @@ namespace StrategyDemo.UI
         {
             if (_shownHealth != null)
             {
-                _shownHealth.Changed -= ShowHealth;
+                _shownHealth.Changed -= ShowHealthHandler;
                 _shownHealth = null;
             }
         }
+
+        // Created once: "-= ShowHealth" would convert the method group into a new delegate whenever the shown object
+        // changes, including when a selected object dies mid-combat.
+        private Action ShowHealthHandler => _showHealthHandler ??= ShowHealth;
 
         private void ShowHealth()
         {

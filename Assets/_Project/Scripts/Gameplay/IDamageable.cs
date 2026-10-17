@@ -3,9 +3,10 @@ namespace StrategyDemo.Gameplay
     /// <summary>
     /// A board object that can be attacked and destroyed: buildings and soldiers (R9, R10; ADR-001 Karar 5). An attacker
     /// only needs this, never the concrete type; range is measured to the nearest cell of
-    /// <see cref="IBoardOccupant.Footprint"/>, so a soldier at a large building's edge can hit it.
+    /// <see cref="IBoardOccupant.Footprint"/>, so a soldier at a large building's edge can hit it. Whatever can be
+    /// destroyed can also be taken off the board, hence <see cref="IDespawnable"/>.
     /// </summary>
-    public interface IDamageable : IBoardOccupant
+    public interface IDamageable : IDespawnable
     {
         /// <summary>Hit points of this object. Damage goes through <see cref="Gameplay.Health.TakeDamage"/>.</summary>
         Health Health { get; }

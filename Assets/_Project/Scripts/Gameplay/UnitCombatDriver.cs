@@ -30,7 +30,13 @@ namespace StrategyDemo.Gameplay
 
         private void Update()
         {
-            _combat?.Tick(Time.deltaTime);
+            // The editor can report a negative frame time (seen while stepping a paused game with the Frame Debugger
+            // open). Tick rejects it as a bug in its caller; here it is skipped so one odd frame does not throw.
+            float deltaTime = Time.deltaTime;
+            if (_combat != null && deltaTime >= 0f)
+            {
+                _combat.Tick(deltaTime);
+            }
         }
     }
 }

@@ -30,7 +30,7 @@ namespace StrategyDemo.Tests.EditMode
             Selection = new SelectionService(Grid, Registry);
             UnitFactory = new NullUnitFactory();
             BuildingFactory = new NullBuildingFactory();
-            Despawner = new OccupantDespawner(Grid, Registry, Movement, Selection, UnitFactory, BuildingFactory);
+            Despawner = new OccupantDespawner(Grid, Registry, Movement, Selection);
             Combat = new UnitCombat(Movement, new FreeForAllAttackRule(), Despawner);
         }
 
@@ -51,7 +51,7 @@ namespace StrategyDemo.Tests.EditMode
             Unit unit = TestBoard.CreateUnitObject(definition.name);
             _objects.Add(unit.gameObject);
             int id = Registry.NextId();
-            unit.Init(definition, cell, id, Board.View.CellToWorld(cell));
+            unit.Init(definition, cell, id, Board.View.CellToWorld(cell), UnitFactory);
             Grid.Occupy(cell, Vector2Int.one, id);
             Registry.Add(unit);
             Reservations.Reserve(cell, id);
@@ -65,7 +65,7 @@ namespace StrategyDemo.Tests.EditMode
             Building building = TestBoard.CreateBuildingObject(definition.name);
             _objects.Add(building.gameObject);
             int id = Registry.NextId();
-            building.Init(definition, origin, id, Board.View.FootprintCenter(origin, size));
+            building.Init(definition, origin, id, Board.View.FootprintCenter(origin, size), BuildingFactory);
             Grid.Occupy(origin, size, id);
             Registry.Add(building);
             return building;

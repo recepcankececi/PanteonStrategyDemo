@@ -28,6 +28,8 @@ namespace StrategyDemo.Gameplay
 
         private Health _health;
         private bool _isPinned;
+        private Action _refreshHandler;
+        private Transform _fillTransform;
 
         /// <summary>True while either part is drawn.</summary>
         public bool IsVisible => _fill != null && _fill.enabled;
@@ -52,9 +54,12 @@ namespace StrategyDemo.Gameplay
 
             Unbind();
             _health = health;
+            // Read here, at production: the first read of a component's transform creates its managed wrapper, which
+            // would otherwise allocate on the object's first hit, mid-combat.
+            _fillTransform = _fill.transform;
             transform.localPosition = new Vector3(0f, footprint.y * GridConfig.CellWorldSize * 0.5f - _topInset, 0f);
             transform.localScale = new Vector3(footprint.x, 1f, 1f);
-            _health.Changed += Refresh;
+            _health.Changed += RefreshHandler;
             Refresh();
         }
 
@@ -63,7 +68,7 @@ namespace StrategyDemo.Gameplay
         {
             if (_health != null)
             {
-                _health.Changed -= Refresh;
+                _health.Changed -= RefreshHandler;
                 _health = null;
             }
 
@@ -78,6 +83,9 @@ namespace StrategyDemo.Gameplay
             Refresh();
         }
 
+        // Created once: "-= Refresh" would convert the method group into a new delegate on every unbind, i.e. every death.
+        private Action RefreshHandler => _refreshHandler ??= Refresh;
+
         private void Refresh()
         {
             bool visible = _health != null && _health.IsAlive && (_isPinned || _health.Current < _health.Max);
@@ -91,8 +99,8 @@ namespace StrategyDemo.Gameplay
             // Local units of the bar: one sprite width per footprint column (the root's X scale does the rest).
             float width = _background.sprite != null ? _background.sprite.bounds.size.x : 0f;
             // Centred pivot: shrink, then shift left by half the lost width so the fill stays anchored on the left.
-            _fill.transform.localScale = new Vector3(fraction, 1f, 1f);
-            _fill.transform.localPosition = new Vector3(-(1f - fraction) * width * 0.5f, 0f, 0f);
+            _fillTransform.localScale = new Vector3(fraction, 1f, 1f);
+            _fillTransform.localPosition = new Vector3(-(1f - fraction) * width * 0.5f, 0f, 0f);
             _fill.color = Color.Lerp(_emptyColor, _fullColor, fraction);
         }
 

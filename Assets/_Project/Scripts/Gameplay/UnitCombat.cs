@@ -59,6 +59,12 @@ namespace StrategyDemo.Gameplay
             _despawner.Despawned += HandleDespawned;
         }
 
+        /// <summary>
+        /// Raised on every hit, before the damage is dealt: the attacker and its target (alive, even when the hit is
+        /// fatal). Views draw effects from it; combat does not depend on anyone listening.
+        /// </summary>
+        public event Action<Unit, IDamageable> HitLanded;
+
         /// <summary>Soldiers with an attack order (chasing or attacking).</summary>
         public int AttackerCount => _orders.Count;
 
@@ -236,6 +242,7 @@ namespace StrategyDemo.Gameplay
             }
 
             attacker.NextAttackTime = _clock + attacker.Definition.AttackInterval;
+            HitLanded?.Invoke(attacker, order.Target);
             // Only the fatal hit returns true, so a target is queued for removal once.
             if (order.Target.Health.TakeDamage(attacker.Definition.Damage))
             {

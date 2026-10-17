@@ -30,6 +30,8 @@ namespace StrategyDemo.Gameplay
 
         private readonly Health _health = new Health();
         private SpriteRenderer _renderer;
+        // The factory this soldier goes back to when it dies; null while in the pool.
+        private IUnitFactory _owner;
 
         /// <summary>Type of this soldier; null while waiting in the pool.</summary>
         public UnitDefinition Definition { get; private set; }
@@ -63,10 +65,12 @@ namespace StrategyDemo.Gameplay
 
         /// <summary>Shows <paramref name="definition"/> standing on <paramref name="cell"/>, facing up.</summary>
         /// <param name="worldPosition">Centre of the cell; the sprite's pivot goes here.</param>
+        /// <param name="owner">Factory that <see cref="IDespawnable.ReturnToPool"/> hands the soldier back to; null only in tests
+        /// that never despawn it.</param>
         /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="definition"/> has no standing sprite or no walk frames.</exception>
         /// <exception cref="InvalidOperationException">The visual, health bar or hit flash is not assigned.</exception>
-        public void Init(UnitDefinition definition, Vector2Int cell, int occupantId, Vector3 worldPosition)
+        public void Init(UnitDefinition definition, Vector2Int cell, int occupantId, Vector3 worldPosition, IUnitFactory owner = null)
         {
             if (definition == null)
             {
@@ -85,6 +89,7 @@ namespace StrategyDemo.Gameplay
             }
 
             Definition = definition;
+            _owner = owner;
             OccupantId = occupantId;
             Origin = cell;
             // The id keeps names unique in the hierarchy, e.g. "Assault_7".
@@ -104,6 +109,23 @@ namespace StrategyDemo.Gameplay
         public void PinHealthBar(bool pinned)
         {
             _healthBar.SetPinned(pinned);
+        }
+
+        // Explicit: only the despawner, which holds an IDespawnable, can take the object off the board; a caller
+        // holding the concrete type cannot skip the registry, selection and event steps.
+        /// <inheritdoc/>
+        void IDespawnable.LeaveBoard(DespawnContext board)
+        {
+            // Movement owns everything a soldier holds: its grid cell, its stop-cell reservation and its move order.
+            board.Movement.Remove(this);
+        }
+
+        /// <inheritdoc/>
+        void IDespawnable.ReturnToPool()
+        {
+            // Read first: the factory resets the soldier, which clears the owner.
+            IUnitFactory owner = _owner ?? throw new InvalidOperationException($"{nameof(Unit)} '{name}' was not made by a factory.");
+            owner.Release(this);
         }
 
         /// <summary>
@@ -168,7 +190,9 @@ namespace StrategyDemo.Gameplay
                 Renderer.sprite = null;
             }
 
-            // Views unbind first, then Clear drops any listener left, so a reused soldier cannot call old views.
+            // Clear first: it drops every listener at once, so the views' unsubscribes below find nothing to remove.
+            // Removing one listener of several would allocate a new delegate on every death.
+            _health.Clear();
             if (_healthBar != null)
             {
                 _healthBar.Unbind();
@@ -179,11 +203,10 @@ namespace StrategyDemo.Gameplay
                 _hitFlash.Unbind();
             }
 
-            _health.Clear();
-
             IsWalking = false;
             NextAttackTime = 0d;
             Definition = null;
+            _owner = null;
             OccupantId = 0;
             Origin = default;
         }

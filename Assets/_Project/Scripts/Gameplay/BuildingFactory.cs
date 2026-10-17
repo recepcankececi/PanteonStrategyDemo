@@ -21,6 +21,8 @@ namespace StrategyDemo.Gameplay
         private readonly Transform _poolContainer;
         private readonly GridView _gridView;
         private readonly ObjectPool<Building> _pool;
+        // Read once: Object.name allocates a new string on every read, and a death must not allocate.
+        private readonly string _pooledName;
 
         /// <param name="prefab">Building prefab.</param>
         /// <param name="activeContainer">Parent of buildings on the board.</param>
@@ -33,6 +35,7 @@ namespace StrategyDemo.Gameplay
             _activeContainer = activeContainer != null ? activeContainer : throw new ArgumentNullException(nameof(activeContainer));
             _poolContainer = poolContainer != null ? poolContainer : throw new ArgumentNullException(nameof(poolContainer));
             _gridView = gridView != null ? gridView : throw new ArgumentNullException(nameof(gridView));
+            _pooledName = prefab.name;
             _pool = new ObjectPool<Building>(CreateBuilding, TakeFromPool, ReturnToPool);
         }
 
@@ -50,7 +53,7 @@ namespace StrategyDemo.Gameplay
             Building building = _pool.Get();
             try
             {
-                building.Init(definition, origin, occupantId, _gridView.FootprintCenter(origin, definition.Footprint));
+                building.Init(definition, origin, occupantId, _gridView.FootprintCenter(origin, definition.Footprint), this);
             }
             catch
             {
@@ -72,7 +75,7 @@ namespace StrategyDemo.Gameplay
         {
             // Created inactive under the pool, like a released building; TakeFromPool moves it to the board.
             Building building = Object.Instantiate(_prefab, _poolContainer);
-            building.name = _prefab.name;
+            building.name = _pooledName;
             building.gameObject.SetActive(false);
             return building;
         }
@@ -88,7 +91,7 @@ namespace StrategyDemo.Gameplay
             building.ResetState();
             building.gameObject.SetActive(false);
             building.transform.SetParent(_poolContainer, false);
-            building.name = _prefab.name;
+            building.name = _pooledName;
         }
     }
 }

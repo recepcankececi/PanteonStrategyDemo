@@ -26,6 +26,8 @@ namespace StrategyDemo.Data
         [SerializeField, Tooltip("Walk cycle, looped while the soldier moves. Same size and pivot as the standing sprite.")]
         private Sprite[] _walkFrames = Array.Empty<Sprite>();
         [SerializeField, Min(0.01f), Tooltip("Walk cycle speed in frames per second.")] private float _walkFramesPerSecond = 6f;
+        [SerializeField, Tooltip("Every hit draws a tracer from the soldier to its target (ranged soldiers).")]
+        private bool _firesTracer;
 
         /// <summary>Name shown to the player.</summary>
         public string DisplayName => _displayName;
@@ -53,5 +55,8 @@ namespace StrategyDemo.Data
 
         /// <summary>Walk cycle speed in frames per second.</summary>
         public float WalkFramesPerSecond => _walkFramesPerSecond;
+
+        /// <summary>True when every hit of this soldier draws a tracer to its target; the damage itself stays instant.</summary>
+        public bool FiresTracer => _firesTracer;
     }
 }

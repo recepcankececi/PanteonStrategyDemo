@@ -22,6 +22,9 @@ namespace StrategyDemo.Tests.EditMode
         private const string CellHighlightPath = GeneratedArtImporter.RootFolder + "Board/CellHighlight.png";
         private const string BoardEdgePath = GeneratedArtImporter.BoardEdgePath;
         private const string HealthBarPath = GeneratedArtImporter.RootFolder + "Board/HealthBar.png";
+        private const string TracerPath = GeneratedArtImporter.RootFolder + "Board/Tracer.png";
+        private const string DeathBurstPath = GeneratedArtImporter.RootFolder + "Board/DeathBurst.png";
+        private const string EffectSettingsPath = "Assets/_Project/ScriptableObjects/Effects/CombatEffectSettings.asset";
         private const string WorldAtlasPath = "Assets/_Project/Art/Atlases/WorldAtlas.spriteatlasv2";
         private const string UiAtlasPath = "Assets/_Project/Art/Atlases/UIAtlas.spriteatlasv2";
         private const string CatalogPath = "Assets/_Project/ScriptableObjects/BuildingCatalog.asset";
@@ -158,11 +161,15 @@ namespace StrategyDemo.Tests.EditMode
         public void WorldAtlas_PacksExactlyTheBoardSpritesInUse()
         {
             // The ground is not packed: it tiles, and bilinear sampling at a tile edge would blend in atlas padding.
-            Assert.That(Packables(WorldAtlasPath), Is.EquivalentTo(new[] { BuildingsFolder, UnitsFolder, CellHighlightPath, BoardEdgePath, HealthBarPath }));
+            string[] boardSprites = { CellHighlightPath, BoardEdgePath, HealthBarPath, TracerPath, DeathBurstPath };
+            Assert.That(Packables(WorldAtlasPath), Is.EquivalentTo(new[] { BuildingsFolder, UnitsFolder }.Concat(boardSprites)));
 
             // The cell highlight (selection, placement, drag box), the board edge and the health bar are used by the
-            // scene and prefabs, not by data.
+            // scene and prefabs; the tracer and the burst by the combat effect settings.
             var used = new HashSet<string> { CellHighlightPath, BoardEdgePath, HealthBarPath };
+            var effects = AssetDatabase.LoadAssetAtPath<CombatEffectSettings>(EffectSettingsPath);
+            used.Add(AssetDatabase.GetAssetPath(effects.TracerSprite));
+            used.Add(AssetDatabase.GetAssetPath(effects.BurstSprite));
             foreach (BuildingDefinition building in AssetDatabase.LoadAssetAtPath<BuildingCatalog>(CatalogPath).Buildings)
             {
                 used.Add(AssetDatabase.GetAssetPath(building.Sprite));
@@ -175,8 +182,7 @@ namespace StrategyDemo.Tests.EditMode
             }
 
             // Folder entries pack everything inside them, so the folders must hold exactly what the data references.
-            string[] packed = TexturePathsUnder(BuildingsFolder).Concat(TexturePathsUnder(UnitsFolder))
-                .Append(CellHighlightPath).Append(BoardEdgePath).Append(HealthBarPath).ToArray();
+            string[] packed = TexturePathsUnder(BuildingsFolder).Concat(TexturePathsUnder(UnitsFolder)).Concat(boardSprites).ToArray();
             Assert.That(packed, Is.EquivalentTo(used));
         }
 

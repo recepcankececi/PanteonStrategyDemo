@@ -34,15 +34,11 @@ namespace StrategyDemo.Tests.EditMode
             OccupantRegistry r = _world.Registry;
             UnitMovement m = _world.Movement;
             SelectionService s = _world.Selection;
-            IUnitFactory u = _world.UnitFactory;
-            IBuildingFactory b = _world.BuildingFactory;
 
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(null, r, m, s, u, b));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, null, m, s, u, b));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, null, s, u, b));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, m, null, u, b));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, m, s, null, b));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, m, s, u, null));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(null, r, m, s));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, null, m, s));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, null, s));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, m, null));
         }
 
         [Test]
@@ -138,12 +134,64 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void Despawn_UnknownOccupantType_Throws()
+        public void Despawn_NewOccupantType_RunsItsOwnStepsInOrder()
         {
-            var fake = new FakeOccupant(_world.Registry.NextId(), new Vector2Int(1, 1), Vector2Int.one);
-            _world.Registry.Add(fake);
+            // Open/Closed: a type the despawner has never heard of is removed through the interface alone.
+            var wall = new FakeDespawnable(_world.Registry.NextId(), new Vector2Int(1, 1));
+            _world.Grid.Occupy(wall.Origin, wall.Footprint, wall.OccupantId);
+            _world.Registry.Add(wall);
+            _world.Despawner.Despawned += gone => wall.Steps.Add("despawned");
 
-            Assert.Throws<ArgumentException>(() => _world.Despawner.Despawn(fake));
+            bool removed = _world.Despawner.Despawn(wall);
+
+            Assert.That(removed, Is.True);
+            Assert.That(wall.Steps, Is.EqualTo(new[] { "leave", "despawned", "pool" }));
+            Assert.That(_world.Grid.GetOccupant(wall.Origin), Is.EqualTo(GridMap.EmptyId));
+            Assert.That(_world.IsRegistered(wall), Is.False);
+        }
+
+        [Test]
+        public void ReturnToPool_SoldierNotMadeByAFactory_Throws()
+        {
+            Unit orphan = TestBoard.CreateUnitObject("Orphan");
+            try
+            {
+                orphan.Init(_soldier, new Vector2Int(1, 1), 99, Vector3.zero);
+
+                Assert.Throws<InvalidOperationException>(() => ((IDespawnable)orphan).ReturnToPool());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(orphan.gameObject);
+            }
+        }
+
+        /// <summary>An occupant type the despawner does not know, recording the steps it is asked to take.</summary>
+        private sealed class FakeDespawnable : IDespawnable
+        {
+            public FakeDespawnable(int occupantId, Vector2Int origin)
+            {
+                OccupantId = occupantId;
+                Origin = origin;
+            }
+
+            public List<string> Steps { get; } = new List<string>();
+            public int OccupantId { get; }
+            public Vector2Int Origin { get; }
+            public Vector2Int Footprint => Vector2Int.one;
+            public bool IsMobile => false;
+            public Vector3 WorldCenter => Vector3.zero;
+
+            public void LeaveBoard(DespawnContext board)
+            {
+                Steps.Add("leave");
+                board.Grid.Release(Origin, Footprint, OccupantId);
+            }
+
+            public void ReturnToPool()
+            {
+                Steps.Add("pool");
+            }
         }
     }
 }

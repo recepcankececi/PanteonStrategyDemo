@@ -85,7 +85,8 @@ namespace StrategyDemo.Tests.EditMode
         /// Creates a soldier definition with a standing sprite and <paramref name="frameCount"/> walk frames; destroyed
         /// with the board.
         /// </summary>
-        public UnitDefinition Unit(string assetName, int damage = 1, int frameCount = 2, int range = 1, float interval = 1f, int health = 10)
+        public UnitDefinition Unit(string assetName, int damage = 1, int frameCount = 2, int range = 1, float interval = 1f, int health = 10,
+            bool firesTracer = false)
         {
             // One pixel per walk frame plus one for the standing sprite.
             var texture = new Texture2D(frameCount + 1, 1) { name = assetName };
@@ -100,6 +101,7 @@ namespace StrategyDemo.Tests.EditMode
             serialized.FindProperty("_attackRange").intValue = range;
             serialized.FindProperty("_attackInterval").floatValue = interval;
             serialized.FindProperty("_maxHealth").intValue = health;
+            serialized.FindProperty("_firesTracer").boolValue = firesTracer;
             Sprite standing = Sprite.Create(texture, new Rect(frameCount, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
             standing.name = $"{assetName}_Stand";
             _owned.Add(standing);

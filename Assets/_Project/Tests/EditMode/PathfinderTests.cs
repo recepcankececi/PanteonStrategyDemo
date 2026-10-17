@@ -220,14 +220,14 @@ namespace StrategyDemo.Tests.EditMode
             Wall(V(4, 0), V(1, 6));
             _pathfinder.TryFindPath(V(0, 0), V(9, 0), _path);
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < 100; i++)
+            AllocationAssert.None(() =>
             {
-                _pathfinder.TryFindPath(V(0, 0), V(9, 0), _path);
-                _pathfinder.TryFindPath(V(9, 7), V(0, 7), _path);
-            }
-
-            Assert.That(GC.GetAllocatedBytesForCurrentThread() - before, Is.Zero);
+                for (int i = 0; i < 100; i++)
+                {
+                    _pathfinder.TryFindPath(V(0, 0), V(9, 0), _path);
+                    _pathfinder.TryFindPath(V(9, 7), V(0, 7), _path);
+                }
+            });
         }
 
         private void Wall(Vector2Int origin, Vector2Int size)
