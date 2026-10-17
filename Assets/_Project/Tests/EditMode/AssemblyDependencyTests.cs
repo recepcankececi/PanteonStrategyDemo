@@ -9,7 +9,7 @@ using UnityEngine;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Guards the module dependency rules of ADR-001 (Karar 3): a wrong-direction reference
+    /// Guards the module dependency rules (Core and Data at the bottom, App at the top): a wrong-direction reference
     /// must fail a test, not just a code review.
     /// </summary>
     /// <remarks>
@@ -58,7 +58,7 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(moduleReferences, Is.SubsetOf(AllowedModuleReferences[moduleName]));
         }
 
-        // ADR-001 Karar 3: Data and Core stay engine-only (no uGUI, Input System or other packages),
+        // Data and Core stay engine-only (no uGUI, Input System or other packages),
         // so they can be tested and reused without a scene.
         [TestCase("StrategyDemo.Data")]
         [TestCase("StrategyDemo.Core")]
@@ -75,7 +75,7 @@ namespace StrategyDemo.Tests.EditMode
                 .Where(name => name.StartsWith(ModulePrefix) && !AllowedModuleReferences.ContainsKey(name))
                 .ToArray();
 
-            Assert.That(unlisted, Is.Empty, "New modules need an entry here and in ADR-001.");
+            Assert.That(unlisted, Is.Empty, "New modules need an entry here.");
         }
 
         private static string[] DeclaredReferences(string moduleName)

@@ -3,7 +3,7 @@ using System;
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Turns a frame of <see cref="PointerInput"/> into placement intents (ADR-001 Karar 6): follow the
+    /// Turns a frame of <see cref="PointerInput"/> into placement intents: follow the
     /// pointer, place on Select (keep placing while Modifier is held), cancel on Command or Cancel.
     /// Clicks over the UI are left to the UI and never reach the board.
     /// </summary>
@@ -12,6 +12,8 @@ namespace StrategyDemo.Gameplay
         private readonly BuildingPlacer _placer;
         private readonly GridView _gridView;
 
+        /// <param name="placer">Placement state and rules the input drives.</param>
+        /// <param name="gridView">Converts the pointer to cells.</param>
         /// <exception cref="ArgumentNullException">An argument is null.</exception>
         public PlacementInputHandler(BuildingPlacer placer, GridView gridView)
         {

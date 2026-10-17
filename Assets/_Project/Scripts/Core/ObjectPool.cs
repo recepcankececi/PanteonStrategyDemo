@@ -5,7 +5,7 @@ namespace StrategyDemo.Core
 {
     /// <summary>
     /// Keeps released objects for reuse so repeatedly spawned things (menu items, units, previews)
-    /// are created once instead of instantiated and destroyed every time (U1, ADR-001 Karar 8).
+    /// are created once instead of instantiated and destroyed every time (U1).
     /// </summary>
     /// <remarks>
     /// The pool knows nothing about Unity: the owner decides what "create", "get" and "release" mean

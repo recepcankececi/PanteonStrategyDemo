@@ -10,6 +10,8 @@ namespace StrategyDemo.Gameplay
     /// </summary>
     public sealed class DespawnContext
     {
+        /// <param name="grid">Board occupancy the leaving object frees its cells in.</param>
+        /// <param name="movement">Movement system a leaving soldier is removed from.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
         public DespawnContext(GridMap grid, UnitMovement movement)
         {

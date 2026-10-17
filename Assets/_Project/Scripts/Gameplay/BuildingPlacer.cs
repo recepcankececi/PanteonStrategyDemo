@@ -112,7 +112,7 @@ namespace StrategyDemo.Gameplay
 
             BuildingDefinition placed = Definition;
             // Validity is cached per cell; re-check, because the grid may have changed while the pointer stood
-            // still (from M6 buildings are destroyed). Occupy would throw on a stale "valid".
+            // still (a building may have been destroyed). Occupy would throw on a stale "valid".
             if (!_grid.IsAreaFree(CandidateOrigin, placed.Footprint))
             {
                 SetValidity(false);

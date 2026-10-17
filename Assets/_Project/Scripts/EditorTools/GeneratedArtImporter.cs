@@ -10,7 +10,7 @@ namespace StrategyDemo.EditorTools
     /// </summary>
     /// <remarks>
     /// Board sprites (buildings, soldiers, ground, cell highlight) use one cell = one world unit and a centred pivot,
-    /// so a building's sprite covers exactly its footprint (ADR-007). UI sprites use the Canvas reference density and
+    /// so a building's sprite covers exactly its footprint. UI sprites use the Canvas reference density and
     /// a fixed 9-slice border; the board edge is the one board sprite with a 9-slice border. Filtering is
     /// bilinear: the art is vector, drawn at non-integer zoom and rotated.
     /// </remarks>

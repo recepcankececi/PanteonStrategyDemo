@@ -4,8 +4,7 @@ namespace StrategyDemo.Gameplay
 {
     /// <summary>
     /// Current and maximum hit points of one building or soldier (R7, R8, R10). Pure C#, owned by the object it belongs
-    /// to; the maximum comes from its definition asset, the current value never goes back into that shared asset
-    /// (ADR-001 Karar 4).
+    /// to; the maximum comes from its definition asset, the current value never goes back into that shared asset.
     /// </summary>
     /// <remarks>
     /// <see cref="TakeDamage"/> reports the fatal hit through its return value, not an event: the caller that dealt the

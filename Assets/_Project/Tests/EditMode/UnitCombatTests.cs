@@ -9,7 +9,7 @@ using UnityEngine;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Attacks (R9, R10; ADR-001 Karar 10): chase into range, hit every interval, ranged stop distance, group spread,
+    /// Attacks (R9, R10): chase into range, hit every interval, ranged stop distance, group spread,
     /// moving targets, deaths mid-chase and mid-attack, no free cell in range, mutual kills.
     /// </summary>
     public class UnitCombatTests

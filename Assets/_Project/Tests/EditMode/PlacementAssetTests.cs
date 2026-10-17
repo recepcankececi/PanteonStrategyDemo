@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Assets and scene objects placement relies on: input actions, the Building prefab, the ghost (M3).</summary>
+    /// <summary>Assets and scene objects placement relies on: input actions, the Building prefab, the ghost.</summary>
     public class PlacementAssetTests
     {
         private const string MainScenePath = "Assets/_Project/Scenes/Main.unity";
@@ -120,7 +120,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Systems_HasInputControllerWithEventSystem()
         {
-            // Found by type name: the test assembly does not reference App (ADR-001 Karar 3).
+            // Found by type name: the test assembly does not reference App.
             MonoBehaviour controller = Root(SystemsGroup).GetComponentsInChildren<MonoBehaviour>(true)
                 .SingleOrDefault(component => component.GetType().Name == "InputController");
             Assert.That(controller, Is.Not.Null);

@@ -4,7 +4,7 @@ namespace StrategyDemo.Gameplay
 {
     /// <summary>
     /// Anything that holds cells in the <see cref="StrategyDemo.Core.GridMap"/>: buildings and soldiers.
-    /// Selection, the selection highlight and (from M6) attacks work with this, not with the concrete type.
+    /// Selection, the selection highlight and attacks work with this, not with the concrete type.
     /// </summary>
     public interface IBoardOccupant
     {

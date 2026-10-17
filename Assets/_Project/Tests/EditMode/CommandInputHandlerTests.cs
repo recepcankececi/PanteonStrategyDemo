@@ -146,6 +146,20 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_reservations.OwnerOf(new Vector2Int(1, 1)), Is.EqualTo(_unit.OccupantId));
         }
 
+        [Test]
+        public void Command_OffBoardWhileAttacking_KeepsAttackOrder()
+        {
+            Building tower = PlaceTower(new Vector2Int(6, 4));
+            _selection.SelectAt(new Vector2Int(1, 1));
+            _handler.Handle(Frame(new Vector3(6.5f, 4.5f, 0f), command: true));
+
+            // The board is 10 × 8 cells from the origin; this is the padding beside it.
+            _handler.Handle(Frame(new Vector3(-2.5f, 4.5f, 0f), command: true));
+
+            Assert.That(_combat.StateOf(_unit), Is.EqualTo(CombatState.Chasing));
+            Assert.That(_combat.TargetOf(_unit), Is.SameAs(tower));
+        }
+
         private Building PlaceTower(Vector2Int cell)
         {
             _tower = TestBoard.CreateBuildingObject("Tower");

@@ -5,7 +5,7 @@ using UnityEngine;
 namespace StrategyDemo.Core
 {
     /// <summary>
-    /// Which soldier will stop on which cell (ADR-008). Each owner holds at most one cell and each cell at most one
+    /// Which soldier will stop on which cell. Each owner holds at most one cell and each cell at most one
     /// owner, so two soldiers can never end up standing on the same cell, even while they still walk there.
     /// </summary>
     /// <remarks>
@@ -21,6 +21,8 @@ namespace StrategyDemo.Core
         private readonly int _width;
         private readonly int _height;
 
+        /// <param name="width">Board width in cells.</param>
+        /// <param name="height">Board height in cells.</param>
         /// <exception cref="ArgumentOutOfRangeException">Width or height is not positive.</exception>
         public CellReservations(int width, int height)
         {

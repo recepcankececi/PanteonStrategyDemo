@@ -10,7 +10,7 @@ namespace StrategyDemo.Gameplay
     /// </summary>
     /// <remarks>
     /// Swapping <see cref="SpriteRenderer.sprite"/> between frames of the same atlas keeps the shared material,
-    /// so animated soldiers still batch (ADR-001 Karar 9). Stopping keeps the last sprite; the owner decides what
+    /// so animated soldiers still batch. Stopping keeps the last sprite; the owner decides what
     /// to show next (a soldier shows its standing pose). The sprite is assigned only when the frame changes;
     /// <c>Update</c> allocates nothing.
     /// </remarks>

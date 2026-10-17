@@ -7,8 +7,8 @@ using UnityEngine;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Guards the shipped data assets against the case specification (R1, R2, R5, R7, R8), Can's M4.5 decisions
-    /// (building set, soldier types) and the art invariant of ADR-007 (sprite = footprint, centred pivot).
+    /// Guards the shipped data assets against the case specification (R1, R2, R5, R7, R8), the chosen
+    /// building set and soldier types, and the art invariant (sprite = footprint, centred pivot).
     /// </summary>
     public class GameDataTests
     {
@@ -17,7 +17,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string GridConfigPath = DataFolder + "Grid/GridConfig.asset";
         private const int SoldierHealth = 10;
 
-        // name, asset, HP, sprite, footprint w, footprint h (Can's M4.5 set; Barracks and Power Plant HP from R8).
+        // name, asset, HP, sprite, footprint w, footprint h (Barracks and Power Plant HP from R8).
         private static readonly object[] Buildings =
         {
             new object[] { "Barracks", "Barracks", 100, "Barracks", 3, 3 },
@@ -84,7 +84,7 @@ namespace StrategyDemo.Tests.EditMode
         {
             BuildingDefinition building = LoadBuilding(asset);
 
-            // ADR-007 invariant: the image is its cells, no larger, so nothing draws outside them.
+            // Art invariant: the image is its cells, no larger, so nothing draws outside them.
             Assert.That(building.Sprite.rect.size, Is.EqualTo((Vector2)building.Footprint * _grid.CellPixelSize));
         }
 

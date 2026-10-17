@@ -10,7 +10,7 @@ namespace StrategyDemo.Gameplay
     /// </summary>
     /// <remarks>
     /// Reads the handler in <c>LateUpdate</c> (after input ran this frame) and touches the renderer only when the area
-    /// changes; resizing a tiled sprite rebuilds its mesh. Vertex colour only, so batching holds (ADR-001 Karar 9).
+    /// changes; resizing a tiled sprite rebuilds its mesh. Vertex colour only, so batching holds.
     /// </remarks>
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class SelectionBox : MonoBehaviour

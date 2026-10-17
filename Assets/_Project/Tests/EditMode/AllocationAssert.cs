@@ -7,7 +7,7 @@ namespace StrategyDemo.Tests.EditMode
     /// <summary>
     /// Zero-allocation checks for the "no per-frame allocations" rule. Counts Unity's <c>GC.Alloc</c> profiler marker
     /// on this thread while the action runs: <c>GC.GetAllocatedBytesForCurrentThread</c> reports 0 even for
-    /// <c>new object[10]</c> in the editor's Mono runtime, so a test built on it can never fail (found in M7).
+    /// <c>new object[10]</c> in the editor's Mono runtime, so a test built on it can never fail.
     /// </summary>
     internal static class AllocationAssert
     {

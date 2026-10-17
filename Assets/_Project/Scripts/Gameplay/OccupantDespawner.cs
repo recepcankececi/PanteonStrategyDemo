@@ -13,7 +13,7 @@ namespace StrategyDemo.Gameplay
     /// <item>Board: the object gives back what it holds (<see cref="IDespawnable.LeaveBoard"/>): a building its cells, a
     /// soldier its cell, stop-cell reservation and move order.</item>
     /// <item>Movement: soldiers approaching it carry on to their stop cells as a plain move.</item>
-    /// <item>Registry: its id leads nowhere any more (ids are never reused, ADR-006).</item>
+    /// <item>Registry: its id leads nowhere any more (ids are never reused).</item>
     /// <item>Selection: dropped if selected, so the information panel and the highlight update.</item>
     /// <item><see cref="Despawned"/>: combat drops the dead object's own attack and every attack aimed at it.</item>
     /// <item>Pool: the scene object goes back to its factory's pool and is reset there
@@ -28,6 +28,10 @@ namespace StrategyDemo.Gameplay
         private readonly SelectionService _selection;
         private readonly DespawnContext _board;
 
+        /// <param name="grid">Board occupancy; the dead object's cells are freed.</param>
+        /// <param name="occupants">Registry the dead object is removed from.</param>
+        /// <param name="movement">Drops the dead soldier's orders and anyone approaching the dead object.</param>
+        /// <param name="selection">Loses the dead object if it was selected.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
         public OccupantDespawner(GridMap grid, OccupantRegistry occupants, UnitMovement movement, SelectionService selection)
         {

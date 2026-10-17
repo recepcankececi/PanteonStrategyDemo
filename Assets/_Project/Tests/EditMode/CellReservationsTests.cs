@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Stop-cell reservations (ADR-008): one cell per owner, one owner per cell.</summary>
+    /// <summary>Stop-cell reservations: one cell per owner, one owner per cell.</summary>
     public class CellReservationsTests
     {
         private CellReservations _reservations;

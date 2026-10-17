@@ -11,7 +11,7 @@ namespace StrategyDemo.UI
     /// <summary>
     /// Production menu (I1, U1): an infinite, looping scroll list of the buildings in the catalog.
     /// Only enough rows to fill the viewport exist; they come from an <see cref="ObjectPool{T}"/> and are
-    /// moved and rebound as the list scrolls (ADR-001 Karar 8, ADR-004).
+    /// moved and rebound as the list scrolls.
     /// </summary>
     /// <remarks>
     /// Lives on the same GameObject as a <see cref="ScrollRect"/> set to Unrestricted movement, which
@@ -35,7 +35,7 @@ namespace StrategyDemo.UI
         private bool _isDragging;
         private bool _viewCountDirty;
 
-        /// <summary>Raised when the player picks a building to build (consumed by placement, M3).</summary>
+        /// <summary>Raised when the player picks a building to build (consumed by placement).</summary>
         public event Action<BuildingDefinition> BuildRequested;
 
         /// <summary>Rows currently in use, top to bottom.</summary>

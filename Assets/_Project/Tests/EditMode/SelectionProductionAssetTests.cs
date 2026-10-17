@@ -10,7 +10,7 @@ using UnityEngine.SceneManagement;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Assets and scene objects selection and production rely on (M4): prefabs, highlight, panel.</summary>
+    /// <summary>Assets and scene objects selection and production rely on: prefabs, highlight, panel.</summary>
     public class SelectionProductionAssetTests
     {
         private const string MainScenePath = "Assets/_Project/Scenes/Main.unity";
@@ -113,7 +113,7 @@ namespace StrategyDemo.Tests.EditMode
         public void InputActions_AreNotRegisteredProjectWide()
         {
             // Registered project-wide, Input System enables its own copy of the asset next to GameInputActions,
-            // so every action would run twice (ADR-005, closed in M4).
+            // so every action would run twice.
             Assert.That(EditorBuildSettings.TryGetConfigObject(ProjectWideActionsKey, out Object _), Is.False);
         }
 

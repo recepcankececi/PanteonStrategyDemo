@@ -6,7 +6,7 @@ using UnityEngine;
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Soldiers attacking buildings and soldiers (R9, R10; ADR-001 Karar 10). Pure C#: <see cref="Tick"/> is driven once
+    /// Soldiers attacking buildings and soldiers (R9, R10). Pure C#: <see cref="Tick"/> is driven once
     /// per frame by <see cref="UnitCombatDriver"/>, after movement, and stepped by hand in EditMode tests.
     /// </summary>
     /// <remarks>

@@ -1,8 +1,7 @@
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// The case's rule: there is no enemy side, so a soldier may attack any building or soldier except itself
-    /// (ADR-001 scope decision).
+    /// The case's rule: there is no enemy side, so a soldier may attack any building or soldier except itself.
     /// </summary>
     public sealed class FreeForAllAttackRule : IAttackRule
     {

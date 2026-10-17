@@ -57,7 +57,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Select_JustAboveFootprint_SelectsNothing()
         {
-            // Sprites never draw outside their cells (ADR-007), so the cell under the pointer is the whole hit test.
+            // Sprites never draw outside their cells, so the cell under the pointer is the whole hit test.
             var tower = new FakeOccupant(_registry.NextId(), new Vector2Int(1, 1), Vector2Int.one);
             _grid.Occupy(tower.Origin, tower.Footprint, tower.OccupantId);
             _registry.Add(tower);

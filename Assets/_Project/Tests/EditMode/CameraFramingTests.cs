@@ -15,7 +15,7 @@ namespace StrategyDemo.Tests.EditMode
         private const float SidePanelReferenceWidth = 360f;
         private const float MinimumAreaWidth = 100f;
 
-        // Same values as the scene's CanvasScaler (ADR-001 Karar 7).
+        // Same values as the scene's CanvasScaler.
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
         private const float MatchWidthOrHeight = 0.5f;
 

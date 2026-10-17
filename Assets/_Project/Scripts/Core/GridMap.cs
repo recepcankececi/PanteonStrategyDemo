@@ -5,7 +5,7 @@ namespace StrategyDemo.Core
 {
     /// <summary>
     /// Occupancy of the board: which cell is covered by which object. Pure C#, so placement,
-    /// pathfinding and combat share one source of truth that is testable without a scene (ADR-001 Karar 1).
+    /// pathfinding and combat share one source of truth that is testable without a scene.
     /// </summary>
     public sealed class GridMap
     {

@@ -14,7 +14,7 @@ namespace StrategyDemo.Gameplay
     /// The fallback search never crosses another building, so a soldier is never put in a pocket walled off from its
     /// producer, where it could never walk out. Soldiers hold their cell in the <see cref="GridMap"/> like buildings
     /// do, so a building can never be placed on a soldier and selection finds a soldier the same way it finds a
-    /// building. A new soldier also reserves its cell (<see cref="CellReservations"/>, ADR-008) and never appears on a
+    /// building. A new soldier also reserves its cell (<see cref="CellReservations"/>) and never appears on a
     /// cell another soldier is walking to, so two soldiers never end up on one cell.
     /// </remarks>
     public sealed class UnitProducer
@@ -30,6 +30,10 @@ namespace StrategyDemo.Gameplay
         // Grid id of the building producing right now; the spawn search may spread through its own cells.
         private int _producerId;
 
+        /// <param name="grid">Board occupancy; the new soldier occupies its spawn cell.</param>
+        /// <param name="occupants">Registry that hands out ids and records the soldier.</param>
+        /// <param name="reservations">The spawn cell is reserved as the soldier's stop cell.</param>
+        /// <param name="factory">Creates (or reuses) the soldier object.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
         public UnitProducer(GridMap grid, OccupantRegistry occupants, CellReservations reservations, IUnitFactory factory)
         {
@@ -99,7 +103,7 @@ namespace StrategyDemo.Gameplay
                 throw;
             }
 
-            // A standing soldier reserves the cell it stands on (ADR-008).
+            // A standing soldier reserves the cell it stands on.
             _reservations.Reserve(producedAt, occupantId);
 
             return true;

@@ -10,8 +10,8 @@ using UnityEngine.SceneManagement;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Assets and scene objects combat relies on: health bars and hit flashes on both prefabs, driver, pool (M6); the
-    /// pooled effect prefab, its settings and its scene objects (M7).
+    /// Assets and scene objects combat relies on: health bars and hit flashes on both prefabs, driver, pool; the
+    /// pooled effect prefab, its settings and its scene objects.
     /// </summary>
     public class CombatAssetTests
     {
@@ -50,7 +50,7 @@ namespace StrategyDemo.Tests.EditMode
             var bar = new SerializedObject(owner).FindProperty("_healthBar").objectReferenceValue as HealthBar;
 
             Assert.That(bar, Is.Not.Null, path);
-            Assert.That(bar.transform.parent, Is.SameAs(prefab.transform), "On the root, which never rotates (ADR-007).");
+            Assert.That(bar.transform.parent, Is.SameAs(prefab.transform), "On the root, which never rotates.");
             var serializedBar = new SerializedObject(bar);
             var background = (SpriteRenderer)serializedBar.FindProperty("_background").objectReferenceValue;
             var fill = (SpriteRenderer)serializedBar.FindProperty("_fill").objectReferenceValue;

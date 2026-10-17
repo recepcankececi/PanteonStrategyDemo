@@ -4,7 +4,7 @@ namespace StrategyDemo.Core
 {
     /// <summary>
     /// Distances on the grid as attacks measure them: in whole cells, diagonal steps counting as one (Chebyshev), to
-    /// the nearest cell of a target's footprint (ADR-001 Karar 5). A soldier next to the corner of a 4×4 building is at
+    /// the nearest cell of a target's footprint. A soldier next to the corner of a 4×4 building is at
     /// distance 1 from it, however far the building's centre is.
     /// </summary>
     public static class GridDistance

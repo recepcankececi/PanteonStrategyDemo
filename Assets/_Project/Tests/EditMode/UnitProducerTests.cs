@@ -204,7 +204,7 @@ namespace StrategyDemo.Tests.EditMode
 
             _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
 
-            Assert.That(_reservations.OwnerOf(cell), Is.EqualTo(_grid.GetOccupant(cell)), "A standing soldier reserves its own cell (ADR-008).");
+            Assert.That(_reservations.OwnerOf(cell), Is.EqualTo(_grid.GetOccupant(cell)), "A standing soldier reserves its own cell.");
         }
 
         [Test]

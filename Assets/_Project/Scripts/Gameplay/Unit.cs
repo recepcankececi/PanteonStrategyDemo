@@ -7,12 +7,12 @@ namespace StrategyDemo.Gameplay
     /// <summary>
     /// A soldier standing on the board: its type, the cell it stands in, where it faces, whether it walks and its health.
     /// Pooled, so <see cref="Init"/> and <see cref="ResetState"/> fully define its state. Runtime state lives here,
-    /// never on the shared <see cref="UnitDefinition"/> asset (ADR-001 Karar 4).
+    /// never on the shared <see cref="UnitDefinition"/> asset.
     /// </summary>
     /// <remarks>
     /// The art is top-down and faces up, so facing a direction is a rotation around Z. Only the <c>Visual</c> child
-    /// turns: the root keeps position only, so the health bar attached to the soldier stays upright. Rotating a <see cref="SpriteRenderer"/> changes only its vertices: the shared material and atlas stay,
-    /// so batching holds.
+    /// turns: the root keeps position only, so the health bar attached to the soldier stays upright. Rotating a
+    /// <see cref="SpriteRenderer"/> changes only its vertices: the shared material and atlas stay, so batching holds.
     /// </remarks>
     public sealed class Unit : MonoBehaviour, IDamageable
     {

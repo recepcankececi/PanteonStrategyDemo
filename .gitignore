@@ -7,7 +7,7 @@
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
 
-# Build output (submission build delivery decided in a later ADR)
+# Build output: shipped as a GitHub Release asset, never committed
 /[Bb]uild/
 /[Bb]uilds/
 

@@ -6,8 +6,8 @@ using UnityEngine.EventSystems;
 namespace StrategyDemo.App
 {
     /// <summary>
-    /// Reads the Gameplay action map once per frame and hands gameplay a <see cref="PointerInput"/> snapshot
-    /// (ADR-001 Karar 6). Knows devices and the screen; knows nothing about game rules.
+    /// Reads the Gameplay action map once per frame and hands gameplay a <see cref="PointerInput"/> snapshot.
+    /// Knows devices and the screen; knows nothing about game rules.
     /// </summary>
     /// <remarks>
     /// Actions are polled in <c>Update</c> rather than handled in callbacks: the "is the pointer over the UI?"

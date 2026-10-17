@@ -11,7 +11,7 @@ namespace StrategyDemo.Gameplay
     /// </summary>
     /// <remarks>
     /// Tinting uses <see cref="SpriteRenderer.color"/>, a vertex colour: the shared material stays untouched,
-    /// so the ghost batches with the rest of the world atlas (ADR-001 Karar 9).
+    /// so the ghost batches with the rest of the world atlas.
     /// </remarks>
     public sealed class PlacementGhost : MonoBehaviour
     {

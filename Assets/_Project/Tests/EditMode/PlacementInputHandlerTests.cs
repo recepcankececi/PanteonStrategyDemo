@@ -7,7 +7,7 @@ using UnityEngine;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// How one frame of input drives placement (ADR-001 Karar 6): follow, place, keep placing with Shift,
+    /// How one frame of input drives placement: follow, place, keep placing with Shift,
     /// cancel with right click or Esc, and never act on clicks over the UI.
     /// </summary>
     public class PlacementInputHandlerTests

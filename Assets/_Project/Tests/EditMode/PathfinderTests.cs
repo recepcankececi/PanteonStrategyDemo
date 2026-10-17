@@ -138,7 +138,7 @@ namespace StrategyDemo.Tests.EditMode
 
             _pathfinder.TryFindPath(V(0, 3), V(9, 3), _path);
 
-            Assert.That(_path, Has.Count.EqualTo(10), "Soldiers never block a path (ADR-001 Karar 11).");
+            Assert.That(_path, Has.Count.EqualTo(10), "Soldiers never block a path.");
         }
 
         [Test]

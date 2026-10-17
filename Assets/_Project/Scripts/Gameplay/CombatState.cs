@@ -1,6 +1,6 @@
 namespace StrategyDemo.Gameplay
 {
-    /// <summary>What a soldier does in combat (ADR-001 Karar 10). Exactly one at a time, so no flag combination is invalid.</summary>
+    /// <summary>What a soldier does in combat. Exactly one at a time, so no flag combination is invalid.</summary>
     public enum CombatState
     {
         /// <summary>No attack order: standing, or walking where the player sent it.</summary>

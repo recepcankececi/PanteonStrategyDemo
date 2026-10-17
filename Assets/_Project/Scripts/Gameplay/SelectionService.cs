@@ -6,8 +6,8 @@ using UnityEngine;
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// What the player has selected (R4, R6, I3): one building or soldier by click, or several soldiers by box
-    /// (ADR-001 Karar 11). Pure C#: cells go in, the objects on them come out through the grid (cell → id) and the
+    /// What the player has selected (R4, R6, I3): one building or soldier by click, or several soldiers by box.
+    /// Pure C#: cells go in, the objects on them come out through the grid (cell → id) and the
     /// registry (id → object).
     /// </summary>
     /// <remarks>
@@ -22,6 +22,8 @@ namespace StrategyDemo.Gameplay
         // Scratch list for box selection; kept to avoid allocating one per box.
         private readonly List<IBoardOccupant> _boxed = new List<IBoardOccupant>();
 
+        /// <param name="grid">Board occupancy: which id stands on a clicked cell.</param>
+        /// <param name="occupants">Resolves that id to the building or soldier.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
         public SelectionService(GridMap grid, OccupantRegistry occupants)
         {

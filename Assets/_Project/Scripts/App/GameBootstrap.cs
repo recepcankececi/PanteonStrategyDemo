@@ -8,7 +8,7 @@ using UnityEngine;
 namespace StrategyDemo.App
 {
     /// <summary>
-    /// Composition root (ADR-001 Karar 3): the only place that creates services and wires scene
+    /// Composition root: the only place that creates services and wires scene
     /// objects together. Read top to bottom, it is the start-up order of the game.
     /// </summary>
     public sealed class GameBootstrap : MonoBehaviour

@@ -9,7 +9,7 @@ namespace StrategyDemo.Data
     /// </summary>
     /// <remarks>
     /// The sprite is exactly the footprint (footprint × cell pixels) with its pivot at the centre, so a building
-    /// draws on its own cells and nowhere else (ADR-007). EditMode tests enforce this for every catalog entry.
+    /// draws on its own cells and nowhere else. EditMode tests enforce this for every catalog entry.
     /// </remarks>
     [CreateAssetMenu(fileName = "BuildingDefinition", menuName = "Strategy Demo/Building Definition")]
     public sealed class BuildingDefinition : ScriptableObject

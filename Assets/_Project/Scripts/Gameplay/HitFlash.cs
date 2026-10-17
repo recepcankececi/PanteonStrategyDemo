@@ -5,8 +5,7 @@ namespace StrategyDemo.Gameplay
 {
     /// <summary>
     /// Tints a sprite briefly when its owner takes damage, then fades back to white. Uses
-    /// <see cref="SpriteRenderer.color"/> (a vertex colour), never <c>renderer.material</c>, so batching holds
-    /// (ADR-001 Karar 9).
+    /// <see cref="SpriteRenderer.color"/> (a vertex colour), never <c>renderer.material</c>, so batching holds.
     /// </summary>
     /// <remarks>
     /// The component is enabled only while a flash plays: idle objects cost no <c>Update</c> call.

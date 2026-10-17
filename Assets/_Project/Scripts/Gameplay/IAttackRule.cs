@@ -1,7 +1,7 @@
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Who may attack whom (ADR-001 Karar 10). The single place a game mode changes: teams or an enemy side would supply
+    /// Who may attack whom. The single place a game mode changes: teams or an enemy side would supply
     /// another rule; soldiers, buildings and pathfinding stay as they are (Strategy pattern).
     /// </summary>
     public interface IAttackRule

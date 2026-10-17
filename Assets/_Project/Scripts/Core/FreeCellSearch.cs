@@ -29,6 +29,7 @@ namespace StrategyDemo.Core
         // One flag per cell, row-major like GridMap; cleared at the start of every search.
         private readonly bool[] _visited;
 
+        /// <param name="grid">The board searched; its size fixes the visited buffer.</param>
         /// <exception cref="ArgumentNullException"><paramref name="grid"/> is null.</exception>
         public FreeCellSearch(GridMap grid)
         {

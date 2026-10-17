@@ -9,7 +9,7 @@ using Object = UnityEngine.Object;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Combat effects (M7): a tracer per ranged hit spanning shooter to target, a burst sized to what was destroyed,
+    /// Combat effects: a tracer per ranged hit spanning shooter to target, a burst sized to what was destroyed,
     /// both fading out and going back to one pool; nothing allocated after warm-up.
     /// </summary>
     public class CombatEffectsTests

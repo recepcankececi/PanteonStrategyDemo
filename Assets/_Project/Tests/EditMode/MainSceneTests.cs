@@ -31,7 +31,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string PanelSpritePath = "Assets/_Project/Art/Generated/UI/Panel.png";
         private const string GroundSpritePath = "Assets/_Project/Art/Generated/Board/Ground.png";
         private const string BoardEdgeSpritePath = "Assets/_Project/Art/Generated/Board/BoardEdge.png";
-        // ADR-001 Karar 7: one Canvas scaled from a 1920x1080 reference, width and height weighted equally.
+        // One Canvas scaled from a 1920x1080 reference, width and height weighted equally.
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
         private const float MatchWidthOrHeight = 0.5f;
 
@@ -137,7 +137,7 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(ground, Is.Not.Null);
             Assert.That(ground.drawMode, Is.EqualTo(SpriteDrawMode.Tiled));
             Assert.That(ground.sortingLayerName, Is.EqualTo(GroundSortingLayer));
-            // ADR-001 Karar 9: no 2D lights are used, so sprites render unlit (one pass, batches with the atlas).
+            // No 2D lights are used, so sprites render unlit (one pass, batches with the atlas).
             Assert.That(ground.sharedMaterial, Is.Not.Null);
             Assert.That(ground.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
         }
@@ -211,7 +211,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void SystemsGroup_HasGameBootstrapWithAllReferencesAssigned()
         {
-            // Found by type name: the test assembly may not reference App (ADR-001 Karar 3).
+            // Found by type name: the test assembly may not reference App.
             MonoBehaviour bootstrap = Root(SystemsGroup).GetComponentsInChildren<MonoBehaviour>(true)
                 .SingleOrDefault(component => component.GetType().Name == GameBootstrapName);
             Assert.That(bootstrap, Is.Not.Null);
@@ -249,13 +249,13 @@ namespace StrategyDemo.Tests.EditMode
             ProductionMenu menu = UiElement(ProductionMenuPanel).GetComponentInChildren<ProductionMenu>(true);
             Assert.That(menu, Is.Not.Null);
 
-            // Same GameObject: drag events reach only the dragged object, and the menu needs them (ADR-004).
+            // Same GameObject: drag events reach only the dragged object, and the menu needs them.
             var scrollRect = menu.GetComponent<ScrollRect>();
             Assert.That(scrollRect, Is.Not.Null);
             Assert.That(new SerializedObject(menu).FindProperty("_itemPrefab").objectReferenceValue, Is.Not.Null);
             Assert.That(scrollRect.vertical, Is.True);
             Assert.That(scrollRect.horizontal, Is.False);
-            // Unrestricted: no end to clamp against, the list loops (ADR-001 Karar 8). An infinite list has no scrollbar.
+            // Unrestricted: no end to clamp against, the list loops. An infinite list has no scrollbar.
             Assert.That(scrollRect.movementType, Is.EqualTo(ScrollRect.MovementType.Unrestricted));
             Assert.That(scrollRect.verticalScrollbar, Is.Null);
             Assert.That(scrollRect.content, Is.Not.Null);
@@ -270,10 +270,10 @@ namespace StrategyDemo.Tests.EditMode
             RectTransform viewport = scrollRect.viewport;
 
             Assert.That(viewport, Is.Not.Null);
-            // RectMask2D clips without the stencil pass a Mask adds (ADR-001 Karar 9).
+            // RectMask2D clips without the stencil pass a Mask adds.
             Assert.That(viewport.GetComponent<RectMask2D>(), Is.Not.Null);
             Assert.That(viewport.GetComponent<Mask>(), Is.Null);
-            // Nested canvas: scrolling rebuilds only the list, not the static panels (ADR-001 Karar 7).
+            // Nested canvas: scrolling rebuilds only the list, not the static panels.
             Assert.That(viewport.GetComponent<Canvas>(), Is.Not.Null);
             Assert.That(viewport.GetComponent<GraphicRaycaster>(), Is.Not.Null, "A nested canvas needs its own raycaster for clicks.");
         }

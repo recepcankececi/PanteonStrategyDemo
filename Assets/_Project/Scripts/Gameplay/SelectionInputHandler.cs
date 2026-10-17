@@ -6,7 +6,7 @@ namespace StrategyDemo.Gameplay
     /// <summary>
     /// Turns a frame of <see cref="PointerInput"/> into selection intents: a left click on the board selects what is
     /// under the pointer (or clears the selection on empty ground); dragging with the left button held draws a box
-    /// that selects the soldiers inside it on release (ADR-001 Karar 11); Esc clears the selection and drops a box.
+    /// that selects the soldiers inside it on release; Esc clears the selection and drops a box.
     /// Clicks over the UI belong to the UI, so clicking a button in the information panel keeps the building selected.
     /// </summary>
     /// <remarks>
@@ -20,6 +20,8 @@ namespace StrategyDemo.Gameplay
         private bool _isPressing;
         private Vector2Int _pressCell;
 
+        /// <param name="selection">Receives the click and box selections.</param>
+        /// <param name="gridView">Converts the pointer to cells.</param>
         /// <exception cref="ArgumentNullException">An argument is null.</exception>
         public SelectionInputHandler(SelectionService selection, GridView gridView)
         {

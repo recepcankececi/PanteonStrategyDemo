@@ -5,9 +5,9 @@ using UnityEngine;
 namespace StrategyDemo.Core
 {
     /// <summary>
-    /// Shortest paths on the <see cref="GridMap"/> with A* (A1, R6; ADR-001 Karar 2): 8 directions, integer costs,
+    /// Shortest paths on the <see cref="GridMap"/> with A* (A1, R6): 8 directions, integer costs,
     /// octile heuristic, no corner cutting. When the goal cannot be reached, the path leads to the reachable cell
-    /// closest to it instead (ADR-008).
+    /// closest to it instead.
     /// </summary>
     /// <remarks>
     /// <para>

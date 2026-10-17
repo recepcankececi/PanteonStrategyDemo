@@ -4,8 +4,8 @@ using UnityEngine;
 namespace StrategyDemo.Core
 {
     /// <summary>
-    /// Index arithmetic of a looping (wrap-around) list whose items have a fixed stride
-    /// (ADR-001 Karar 8). "Virtual index" counts items from the list's start and may grow without
+    /// Index arithmetic of a looping (wrap-around) list whose items have a fixed stride.
+    /// "Virtual index" counts items from the list's start and may grow without
     /// bound in both directions; the data shown is the virtual index wrapped into the item count.
     /// </summary>
     public static class InfiniteScrollMath

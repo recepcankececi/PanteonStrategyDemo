@@ -5,7 +5,7 @@ using UnityEditor;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Covers the pure option-building half of <see cref="BuildScript"/>; the build itself is Can's check (P2).</summary>
+    /// <summary>Covers the pure option-building half of <see cref="BuildScript"/>; the build itself is checked by running the player (P2).</summary>
     public class BuildScriptTests
     {
         private const string ProductName = "StrategyDemo";

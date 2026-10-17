@@ -7,13 +7,13 @@ using UnityEngine;
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Moves soldiers along A* paths (R6, A1; ADR-008). Pure C#: <see cref="Tick"/> is driven once per frame by
+    /// Moves soldiers along A* paths (R6, A1). Pure C#: <see cref="Tick"/> is driven once per frame by
     /// <see cref="UnitMovementDriver"/> and stepped by hand in EditMode tests.
     /// </summary>
     /// <remarks>
     /// <para>Rules, in the order a move order meets them:</para>
     /// <list type="number">
-    /// <item>Only buildings block paths; soldiers walk through each other (ADR-001 Karar 11).</item>
+    /// <item>Only buildings block paths; soldiers walk through each other.</item>
     /// <item>An unreachable goal (e.g. a building's cell, or a walled-off pocket) leads to the reachable cell closest
     /// to it, so right-clicking a building walks the soldier up to it.</item>
     /// <item>Every soldier reserves the cell it will stop on (<see cref="CellReservations"/>); a cell already
@@ -26,7 +26,7 @@ namespace StrategyDemo.Gameplay
     /// <item>A building placed on the remaining path or the stop cell triggers a new plan from where the soldier is.</item>
     /// <item>When every reachable cell is reserved (a pocket packed with soldiers), the soldier waits where it is and
     /// plans again every frame until one frees up. Rare, and cheap on this board, so no "something changed" flag.</item>
-    /// <item>An approach (<see cref="Approach(Unit, IBoardOccupant)"/>, M6) stops on the first cell of the path within
+    /// <item>An approach (<see cref="Approach(Unit, IBoardOccupant)"/>) stops on the first cell of the path within
     /// attack range of the target; when that cell is reserved, on the nearest free cell within range; when no cell in
     /// range is free, on the nearest free cell at all, where combat makes it wait and try again.</item>
     /// </list>
@@ -118,7 +118,7 @@ namespace StrategyDemo.Gameplay
 
         /// <summary>
         /// Sends every soldier in <paramref name="units"/> to a cell within its attack range of
-        /// <paramref name="target"/>, each to its own cell (ADR-001 Karar 10, 11).
+        /// <paramref name="target"/>, each to its own cell.
         /// </summary>
         /// <exception cref="ArgumentNullException">An argument is null.</exception>
         public void Approach(IReadOnlyList<Unit> units, IBoardOccupant target)

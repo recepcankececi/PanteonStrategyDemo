@@ -14,7 +14,7 @@ namespace StrategyDemo.Gameplay
     /// </summary>
     /// <remarks>
     /// The colour is a vertex colour (<see cref="SpriteRenderer.color"/>): the shared material is untouched and the
-    /// markers batch with the world atlas (ADR-001 Karar 9). Markers are pooled because a box selection can mark many
+    /// markers batch with the world atlas. Markers are pooled because a box selection can mark many
     /// soldiers and is redrawn on every selection change.
     /// </remarks>
     public sealed class SelectionHighlight : MonoBehaviour

@@ -11,7 +11,7 @@ using UnityEngine;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// The generated art and its atlases (ADR-007): import settings, the soldier rotation rule, atlases packing only
+    /// The generated art and its atlases: import settings, the soldier rotation rule, atlases packing only
     /// sprites the game uses, and no third-party art left in the project.
     /// </summary>
     public class GeneratedArtTests
@@ -195,7 +195,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void ThirdPartyArt_IsGone()
         {
-            Assert.That(AssetDatabase.IsValidFolder(ThirdPartyFolder), Is.False, "M4.5 replaced Tiny Swords with generated art.");
+            Assert.That(AssetDatabase.IsValidFolder(ThirdPartyFolder), Is.False, "Only generated art ships; no third-party art folder.");
         }
 
         private static string[] Packables(string atlasPath)

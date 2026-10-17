@@ -16,8 +16,8 @@ namespace StrategyDemo.Tests.EditMode
 
         private const string Renderer2DPath = "Assets/_Project/Settings/Renderer2D.asset";
 
-        // ADR-001 Karar 9 as updated by ADR-004: buildings and units share "Objects" so they can sort by Y
-        // against each other. Default stays first because Unity cannot remove it.
+        // Buildings and soldiers share "Objects"; Ground draws below and FX above them.
+        // Default stays first because Unity cannot remove it.
         private static readonly string[] ExpectedSortingLayers = { "Default", "Ground", "Objects", "FX" };
 
         [Test]
@@ -55,7 +55,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Renderer2D_UsesDefaultSorting()
         {
-            // ADR-004's Y-sorting was removed in M7: the art is top-down (ADR-007), so nothing is "behind" anything.
+            // No Y-sorting: the art is top-down, so nothing is "behind" anything.
             // Layers and orders decide the draw order; only soldiers walking through each other overlap, briefly.
             var renderer = new SerializedObject(AssetDatabase.LoadMainAssetAtPath(Renderer2DPath));
 

@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Soldier movement (R6, ADR-008): walking A* paths around buildings, grid cell at the midpoint, one stop cell per
+    /// Soldier movement (R6): walking A* paths around buildings, grid cell at the midpoint, one stop cell per
     /// soldier, unreachable goals, repath when a building appears, walking through other soldiers.
     /// </summary>
     public class UnitMovementTests
@@ -558,7 +558,7 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         /// <summary>
-        /// ADR-008's grid rule: a soldier's Origin is the cell its centre is in, and every such cell is held by a
+        /// The grid rule: a soldier's Origin is the cell its centre is in, and every such cell is held by a
         /// soldier standing in it.
         /// </summary>
         private void AssertGridMatchesSoldiers()

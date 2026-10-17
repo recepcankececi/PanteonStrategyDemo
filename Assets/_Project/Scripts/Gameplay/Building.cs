@@ -7,7 +7,7 @@ namespace StrategyDemo.Gameplay
     /// <summary>
     /// A building standing on the board: which type it is, which cells it covers and its health.
     /// Pooled, so <see cref="Init"/> and <see cref="ResetState"/> fully define its state. Runtime state lives here,
-    /// never on the shared <see cref="BuildingDefinition"/> asset (ADR-001 Karar 4).
+    /// never on the shared <see cref="BuildingDefinition"/> asset.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class Building : MonoBehaviour, IDamageable

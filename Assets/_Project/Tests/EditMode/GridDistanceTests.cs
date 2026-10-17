@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Attack distance: Chebyshev steps to the nearest cell of a footprint (ADR-001 Karar 5).</summary>
+    /// <summary>Attack distance: Chebyshev steps to the nearest cell of a footprint.</summary>
     public class GridDistanceTests
     {
         private static readonly Vector2Int BarracksOrigin = new Vector2Int(4, 4);

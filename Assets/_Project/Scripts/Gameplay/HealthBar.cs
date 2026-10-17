@@ -12,8 +12,8 @@ namespace StrategyDemo.Gameplay
     /// <remarks>
     /// Both parts use the same white sprite from the world atlas, tinted with <see cref="SpriteRenderer.color"/> (a
     /// vertex colour) and sized with the transform's scale, so the shared material is never copied and every bar
-    /// batches with the board (ADR-001 Karar 9). It redraws only when the health changes, not every frame. It sits on
-    /// the soldier's root, not on the rotating visual, so it stays upright (ADR-007).
+    /// batches with the board. It redraws only when the health changes, not every frame. It sits on
+    /// the soldier's root, not on the rotating visual, so it stays upright.
     /// </remarks>
     public sealed class HealthBar : MonoBehaviour
     {

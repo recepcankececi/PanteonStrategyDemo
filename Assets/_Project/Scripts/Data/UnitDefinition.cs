@@ -6,11 +6,11 @@ namespace StrategyDemo.Data
 {
     /// <summary>
     /// Static description of a soldier type. Holds no runtime state: every soldier of this type
-    /// shares the asset, so current HP lives on the soldier, never here (ADR-001 Karar 4).
+    /// shares the asset, so current HP lives on the soldier, never here.
     /// </summary>
     /// <remarks>
     /// Art is top-down and faces up (+Y); the soldier rotates to its heading. Every sprite is one cell with a centred
-    /// pivot and stays inside the cell's inscribed circle, so it never leaves its cell at any rotation (ADR-007).
+    /// pivot and stays inside the cell's inscribed circle, so it never leaves its cell at any rotation.
     /// </remarks>
     [CreateAssetMenu(fileName = "UnitDefinition", menuName = "Strategy Demo/Unit Definition")]
     public sealed class UnitDefinition : ScriptableObject
