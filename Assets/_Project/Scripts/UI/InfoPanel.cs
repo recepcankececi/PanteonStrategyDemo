@@ -121,7 +121,7 @@ namespace StrategyDemo.UI
 
         private void ShowUnit(UnitDefinition unit)
         {
-            ShowCommon(unit.Icon, unit.DisplayName, unit.MaxHealth, Vector2Int.one);
+            ShowCommon(unit.Sprite, unit.DisplayName, unit.MaxHealth, Vector2Int.one);
             _damageLabel.gameObject.SetActive(true);
             _damageLabel.SetText("Damage {0}", unit.Damage);
             _productionSection.SetActive(false);

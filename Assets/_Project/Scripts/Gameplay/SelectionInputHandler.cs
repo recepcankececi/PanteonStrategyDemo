@@ -30,7 +30,7 @@ namespace StrategyDemo.Gameplay
 
             if (input.SelectPressed && !input.IsOverUi)
             {
-                _selection.SelectAt(_gridView.WorldToCell(input.PointerWorld), input.PointerWorld);
+                _selection.SelectAt(_gridView.WorldToCell(input.PointerWorld));
             }
         }
     }

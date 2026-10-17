@@ -55,7 +55,8 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Renderer2D_SortsTransparentObjectsAlongWorldY()
         {
-            // Within one sorting layer and order, a lower pivot (closer to the viewer) draws in front.
+            // Kept from ADR-004 for a stable draw order within one layer. Since ADR-007 no board sprite overlaps
+            // another, so this decides nothing visible today; it matters again if overlapping effects arrive.
             var renderer = new SerializedObject(AssetDatabase.LoadMainAssetAtPath(Renderer2DPath));
 
             Assert.That(renderer.FindProperty("m_TransparencySortMode").intValue, Is.EqualTo((int)TransparencySortMode.CustomAxis));

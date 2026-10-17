@@ -28,7 +28,8 @@ namespace StrategyDemo.Tests.EditMode
         private const string GroundSortingLayer = "Ground";
         private const string UnlitSpriteMaterial = "Sprite-Unlit-Default";
         private const string ScriptPropertyName = "m_Script";
-        private const string PanelSpriteName = "WoodTable_Stitched";
+        private const string PanelSpritePath = "Assets/_Project/Art/Generated/UI/Panel.png";
+        private const string GroundSpritePath = "Assets/_Project/Art/Generated/Board/Ground.png";
 
         // ADR-001 Karar 7: one Canvas scaled from a 1920x1080 reference, width and height weighted equally.
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
@@ -142,21 +143,23 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void Ground_SpriteSupportsTiledNineSliceCentredOnBoard()
+        public void Ground_IsOneCellRepeatingTileCentredOnBoard()
         {
             SpriteRenderer ground = Root(BoardGroup).GetComponentInChildren<GridView>(true).GetComponentInChildren<SpriteRenderer>(true);
             Sprite sprite = ground.sprite;
             Assert.That(sprite, Is.Not.Null);
+            Assert.That(AssetDatabase.GetAssetPath(sprite), Is.EqualTo(GroundSpritePath));
 
             // GridView places the ground at the board centre, which is only right for a centred pivot.
             Assert.That(sprite.pivot, Is.EqualTo(sprite.rect.size * 0.5f));
-            // A border is what keeps the bush edge on the rim while the grass repeats.
-            Assert.That(sprite.border, Is.Not.EqualTo(Vector4.zero));
-            string assetPath = AssetDatabase.GetAssetPath(sprite);
-            var importer = (TextureImporter)AssetImporter.GetAtPath(assetPath);
+            // One tile per cell, so the tile's edge line draws the grid exactly on the cell borders.
+            Assert.That((Vector2)sprite.bounds.size, Is.EqualTo(Vector2.one));
+            Assert.That(sprite.border, Is.EqualTo(Vector4.zero));
+            var importer = (TextureImporter)AssetImporter.GetAtPath(GroundSpritePath);
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);
             Assert.That(settings.spriteMeshType, Is.EqualTo(SpriteMeshType.FullRect), "Tiled draw mode needs a Full Rect mesh.");
+            Assert.That(importer.wrapMode, Is.EqualTo(TextureWrapMode.Repeat), "Bilinear sampling at a tile edge must blend with the opposite edge.");
         }
 
         [Test]
@@ -242,13 +245,15 @@ namespace StrategyDemo.Tests.EditMode
 
         [TestCase(ProductionMenuPanel)]
         [TestCase(InformationPanel)]
-        public void SidePanel_UsesStitchedWoodPanelSprite(string panelName)
+        public void SidePanel_UsesSlicedGeneratedPanelSprite(string panelName)
         {
             Image panel = UiElement(panelName).GetComponent<Image>();
 
             Assert.That(panel.sprite, Is.Not.Null);
-            Assert.That(panel.sprite.name, Is.EqualTo(PanelSpriteName));
-            Assert.That(panel.type, Is.EqualTo(Image.Type.Tiled));
+            Assert.That(AssetDatabase.GetAssetPath(panel.sprite), Is.EqualTo(PanelSpritePath));
+            // Sliced: corners keep their size, the flat centre stretches to any resolution (T2).
+            Assert.That(panel.type, Is.EqualTo(Image.Type.Sliced));
+            Assert.That(panel.pixelsPerUnitMultiplier, Is.EqualTo(1f));
         }
 
         private GameObject Root(string name)

@@ -120,54 +120,9 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_changedCount, Is.EqualTo(2));
         }
 
-        [Test]
-        public void SelectAtPoint_OnRoofAboveFootprint_SelectsBuilding()
+        private IBoardOccupant Place(Vector2Int origin, Vector2Int footprint)
         {
-            // Barracks base covers rows 2..3; its image reaches up to y = 6 (the roof).
-            IBoardOccupant barracks = Place(new Vector2Int(2, 2), new Vector2Int(3, 2), image: new Rect(2f, 2f, 3f, 4f));
-
-            _selection.SelectAt(new Vector2Int(3, 5), new Vector2(3.5f, 5.5f));
-
-            Assert.That(_selection.Selected, Is.SameAs(barracks));
-        }
-
-        [Test]
-        public void SelectAtPoint_SoldierHeadOverBuildingBase_SelectsFrontMostSoldier()
-        {
-            // The soldier stands below the house; its head overlaps the house's bottom cell and is drawn in front (Y-sort).
-            Place(new Vector2Int(2, 2), new Vector2Int(2, 2), image: new Rect(2f, 2f, 2f, 3f));
-            IBoardOccupant soldier = Place(new Vector2Int(2, 1), Vector2Int.one, image: new Rect(2f, 1f, 1f, 1.5f));
-
-            _selection.SelectAt(new Vector2Int(2, 2), new Vector2(2.5f, 2.3f));
-
-            Assert.That(_selection.Selected, Is.SameAs(soldier));
-        }
-
-        [Test]
-        public void SelectAtPoint_CellOccupantTiesWithImageHit_KeepsCellOccupant()
-        {
-            IBoardOccupant left = Place(new Vector2Int(2, 2), Vector2Int.one, image: new Rect(1.8f, 2f, 1.4f, 1.5f));
-            Place(new Vector2Int(3, 2), Vector2Int.one, image: new Rect(2.8f, 2f, 1.4f, 1.5f));
-
-            _selection.SelectAt(new Vector2Int(2, 2), new Vector2(2.9f, 2.5f));
-
-            Assert.That(_selection.Selected, Is.SameAs(left));
-        }
-
-        [Test]
-        public void SelectAtPoint_NothingHit_ClearsSelection()
-        {
-            Place(new Vector2Int(2, 2), Vector2Int.one, image: new Rect(2f, 2f, 1f, 1.5f));
-            _selection.SelectAt(new Vector2Int(2, 2));
-
-            _selection.SelectAt(new Vector2Int(7, 7), new Vector2(7.5f, 7.5f));
-
-            Assert.That(_selection.Selected, Is.Null);
-        }
-
-        private IBoardOccupant Place(Vector2Int origin, Vector2Int footprint, Rect image = default)
-        {
-            var occupant = new FakeOccupant(_registry.NextId(), origin, footprint, image: image);
+            var occupant = new FakeOccupant(_registry.NextId(), origin, footprint);
             _grid.Occupy(origin, footprint, occupant.OccupantId);
             _registry.Add(occupant);
             return occupant;

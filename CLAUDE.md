@@ -19,7 +19,7 @@ Language: code, comments, commits, README → English. `../case-devdocs` → Tur
 3. **Console baseline:** at milestone start, refresh Unity and record the console (errors/warnings). After every C# change: refresh + read console. **Zero errors and no warnings beyond the baseline** before continuing.
 4. **Tests:** every logic system (grid, placement validation, A*, pooling, HP/combat, stat data in ScriptableObjects incl. R7/R8 values) has EditMode tests. Run via MCP. If they cannot be run, the milestone is reported **INCOMPLETE** — never "done".
 5. **Honesty over delivery.** Incomplete, untested or uncertain work is reported as such.
-6. **Dependencies:** no new packages, third-party code or assets without Can's approval. Can decides whether a licence is acceptable; record source + terms in a `README.txt` next to the asset. Visual source of truth: **Tiny Swords** (sprites, animations, UI, particles) — do not mix in other art styles.
+6. **Dependencies:** no new packages, third-party code or assets without Can's approval. Can decides whether a licence is acceptable; record source + terms in a `README.txt` next to the asset. Visual source of truth: **our generated flat vector art** (`Tools/ArtGen`, ADR-007) — every sprite comes from the generator; do not mix in other art styles. Building sprites are exactly footprint × 64 px with a centred pivot.
 7. **Git:**
    - Never push, never `reset --hard`, never `clean`, never rewrite history (hook-enforced).
    - Stage explicit paths only; never `git add -A` / `git add .`.
@@ -37,8 +37,9 @@ Assets/_Project/
   Scripts/<Module>/      one asmdef per module (defined in ADR-001)
   Scripts/EditorTools/   editor-only tooling (BuildScript, scene builders), namespace StrategyDemo.EditorTools
   Prefabs/  ScriptableObjects/  UI/  Settings/ (URP assets)
-  Art/ThirdParty/TinySwords/   (Pixel Frog, free pack; source + terms in README.txt next to it)
+  Art/Generated/         PNGs written by Tools/ArtGen (README.txt: "created for this project")
   Tests/EditMode/        asmdef StrategyDemo.Tests.EditMode
+Tools/ArtGen/            Node sprite generator (outside Assets/, never imported by Unity)
 ```
 Template leftovers (SampleScene, `Assets/Settings`, `InputSystem_Actions`) are moved into `_Project` or removed in M0 via Unity.
 
@@ -54,7 +55,7 @@ Template leftovers (SampleScene, `Assets/Settings`, `InputSystem_Actions`) are m
 - Tests: `MethodOrScenario_Condition_ExpectedResult`.
 
 ## Rendering / build rules
-- All gameplay sprites in one SpriteAtlas (per ADR); never access `renderer.material` at runtime (breaks batching) — use `sharedMaterial` or sprite/color only.
+- All gameplay sprites in one SpriteAtlas (per ADR), except the tiled ground tile (ADR-007); never access `renderer.material` at runtime (breaks batching) — use `sharedMaterial` or sprite/color only.
 - UI: Canvas Scaler = Scale With Screen Size; anchors, no fixed pixel positions.
 - Player Settings: windowed, **resizable window** on.
 

@@ -12,7 +12,7 @@ namespace StrategyDemo.Gameplay
     /// </summary>
     public sealed class GridView : MonoBehaviour
     {
-        [SerializeField, Tooltip("Tiled sprite covering the whole board; its sprite pivot must be centred.")]
+        [SerializeField, Tooltip("Tiled one-cell ground sprite stretched over the whole board; its pivot must be centred.")]
         private SpriteRenderer _ground;
 
         // Cached so bounds, ground and conversions always agree, even if the transform is touched later.
@@ -40,7 +40,7 @@ namespace StrategyDemo.Gameplay
             Vector2 boardSize = new Vector2(config.Width, config.Height) * GridConfig.CellWorldSize;
             WorldBounds = new Rect(_origin, boardSize);
 
-            // Tiled draw mode repeats the grass centre and keeps the sliced border on the board edge.
+            // Tiled draw mode repeats the one-cell ground tile; the line on its edge draws the grid.
             // Changing size rebuilds the mesh only; the shared material is untouched, so batching holds.
             _ground.size = boardSize;
             Vector2 center = WorldBounds.center;
@@ -65,10 +65,10 @@ namespace StrategyDemo.Gameplay
             return GridCoordinates.FootprintOriginAt(worldPosition, _origin, GridConfig.CellWorldSize, footprint);
         }
 
-        /// <summary>World position of the bottom-edge middle of the area at <paramref name="areaOrigin"/> (a building's pivot).</summary>
-        public Vector3 FootprintBaseCenter(Vector2Int areaOrigin, Vector2Int footprint)
+        /// <summary>World position of the centre of the area at <paramref name="areaOrigin"/> (a building's or soldier's pivot).</summary>
+        public Vector3 FootprintCenter(Vector2Int areaOrigin, Vector2Int footprint)
         {
-            return GridCoordinates.FootprintBaseCenter(areaOrigin, footprint, _origin, GridConfig.CellWorldSize);
+            return GridCoordinates.FootprintCenter(areaOrigin, footprint, _origin, GridConfig.CellWorldSize);
         }
     }
 }

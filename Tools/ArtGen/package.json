@@ -1,0 +1,12 @@
+{
+  "name": "artgen",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generates the game's sprites: top-down SVG authored in code, rendered to PNG at 64 px per cell.",
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2"
+  }
+}

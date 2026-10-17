@@ -22,12 +22,6 @@ namespace StrategyDemo.Gameplay
         /// <summary>Number of registered occupants.</summary>
         public int Count => _occupants.Count;
 
-        /// <summary>
-        /// Every registered occupant, in no particular order. The concrete collection type lets <c>foreach</c> use its
-        /// struct enumerator, so iterating allocates nothing.
-        /// </summary>
-        public Dictionary<int, IBoardOccupant>.ValueCollection All => _occupants.Values;
-
         /// <summary>Returns a new, never used id for an occupant about to be created.</summary>
         public int NextId()
         {

@@ -15,7 +15,7 @@ namespace StrategyDemo.Gameplay
     /// </remarks>
     public sealed class PlacementGhost : MonoBehaviour
     {
-        [SerializeField, Tooltip("Shows the building sprite; pivot at the bottom centre of its base.")]
+        [SerializeField, Tooltip("Shows the building sprite; its pivot is the footprint centre.")]
         private SpriteRenderer _buildingRenderer;
         [SerializeField, Tooltip("Tiled sprite sized to the footprint; one tile per cell, pivot centred.")]
         private SpriteRenderer _footprintRenderer;
@@ -70,14 +70,12 @@ namespace StrategyDemo.Gameplay
 
             Vector2Int footprint = _placer.Definition.Footprint;
             bool valid = _placer.IsCandidateValid;
-            // The root sits where a placed building's pivot would: the bottom-edge middle of the footprint.
-            transform.position = _gridView.FootprintBaseCenter(_placer.CandidateOrigin, footprint);
+            // The root sits where a placed building's pivot would: the centre of the footprint.
+            transform.position = _gridView.FootprintCenter(_placer.CandidateOrigin, footprint);
             _buildingRenderer.sprite = _placer.Definition.Sprite;
             _buildingRenderer.color = valid ? _validBuildingTint : _invalidBuildingTint;
-            // The overlay's pivot is centred, so lift it by half the footprint height to cover the area exactly.
-            Vector2 areaSize = (Vector2)footprint * GridConfig.CellWorldSize;
-            _footprintRenderer.size = areaSize;
-            _footprintRenderer.transform.localPosition = new Vector3(0f, areaSize.y * 0.5f, 0f);
+            // The overlay shares the building's centred pivot, so sizing it to the footprint covers the area exactly.
+            _footprintRenderer.size = (Vector2)footprint * GridConfig.CellWorldSize;
             _footprintRenderer.color = valid ? _validFootprintTint : _invalidFootprintTint;
         }
 

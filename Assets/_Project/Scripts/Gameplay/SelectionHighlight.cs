@@ -55,10 +55,8 @@ namespace StrategyDemo.Gameplay
             }
 
             // Pivot is centred: put it in the middle of the covered area, then size the tiling to the footprint.
-            Vector2 areaSize = (Vector2)selected.Footprint * GridConfig.CellWorldSize;
-            Vector3 baseCenter = _gridView.FootprintBaseCenter(selected.Origin, selected.Footprint);
-            transform.position = baseCenter + new Vector3(0f, areaSize.y * 0.5f, 0f);
-            _renderer.size = areaSize;
+            transform.position = _gridView.FootprintCenter(selected.Origin, selected.Footprint);
+            _renderer.size = (Vector2)selected.Footprint * GridConfig.CellWorldSize;
             _renderer.color = _tint;
         }
 

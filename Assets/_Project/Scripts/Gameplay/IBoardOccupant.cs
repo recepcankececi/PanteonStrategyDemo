@@ -22,11 +22,5 @@ namespace StrategyDemo.Gameplay
         /// look past it; a building is a wall.
         /// </summary>
         bool IsMobile { get; }
-
-        /// <summary>
-        /// True when <paramref name="worldPoint"/> lies on the occupant's image, which is larger than its cells
-        /// (a building's roof, a soldier's head). Lets a click on what the player sees select it.
-        /// </summary>
-        bool ContainsPoint(Vector2 worldPoint);
     }
 }

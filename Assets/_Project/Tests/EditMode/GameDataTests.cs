@@ -7,8 +7,8 @@ using UnityEngine;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Guards the shipped data assets against the case specification (R1, R2, R5, R7, R8)
-    /// and Can's M1 decisions (sprites, extra buildings, grid size).
+    /// Guards the shipped data assets against the case specification (R1, R2, R5, R7, R8), Can's M4.5 decisions
+    /// (building set, soldier types) and the art invariant of ADR-007 (sprite = footprint, centred pivot).
     /// </summary>
     public class GameDataTests
     {
@@ -17,24 +17,23 @@ namespace StrategyDemo.Tests.EditMode
         private const string GridConfigPath = DataFolder + "Grid/GridConfig.asset";
         private const int SoldierHealth = 10;
 
-        // name, asset, HP, sprite, footprint w, footprint h. Footprints cover the walls only (ADR-003 update, M2):
-        // Tiny Swords draws every building's walls in the bottom two 64 px rows; roofs and towers overlap the rows above.
+        // name, asset, HP, sprite, footprint w, footprint h (Can's M4.5 set; Barracks and Power Plant HP from R8).
         private static readonly object[] Buildings =
         {
-            new object[] { "Barracks", "Barracks", 100, "Barracks", 3, 2 },
-            new object[] { "Power Plant", "PowerPlant", 50, "Tower", 2, 2 },
-            new object[] { "House", "House", 60, "House1", 2, 2 },
-            new object[] { "Archery", "Archery", 80, "Archery", 3, 2 },
-            new object[] { "Monastery", "Monastery", 120, "Monastery", 3, 2 },
-            new object[] { "Castle", "Castle", 200, "Castle", 5, 2 }
+            new object[] { "Barracks", "Barracks", 100, "Barracks", 3, 3 },
+            new object[] { "Power Plant", "PowerPlant", 50, "PowerPlant", 2, 2 },
+            new object[] { "Command Center", "CommandCenter", 200, "CommandCenter", 4, 4 },
+            new object[] { "Supply Depot", "SupplyDepot", 60, "SupplyDepot", 2, 1 },
+            new object[] { "Radar", "Radar", 80, "Radar", 2, 2 },
+            new object[] { "Guard Tower", "GuardTower", 120, "GuardTower", 1, 1 }
         };
 
-        // asset, display name, damage, range, icon sprite
+        // asset, display name, damage, range, standing sprite. R7's Soldier 1/2/3 are Assault, Rifleman and Scout.
         private static readonly object[] Soldiers =
         {
-            new object[] { "Soldier1", "Soldier 1", 10, 1, "Warrior_Idle_0" },
-            new object[] { "Soldier2", "Soldier 2", 5, 1, "Lancer_Idle_0" },
-            new object[] { "Soldier3", "Soldier 3", 2, 3, "Archer_Idle_0" }
+            new object[] { "Assault", "Assault", 10, 1, "Assault_Stand" },
+            new object[] { "Rifleman", "Rifleman", 5, 1, "Rifleman_Stand" },
+            new object[] { "Scout", "Scout", 2, 3, "Scout_Stand" }
         };
 
         private BuildingCatalog _catalog;
@@ -80,28 +79,23 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [TestCaseSource(nameof(Buildings))]
-        public void Building_FootprintIsAsWideAsSpriteAndNoTaller(
+        public void Building_SpriteIsExactlyFootprintTimesCellPixels(
             string displayName, string asset, int health, string sprite, int footprintX, int footprintY)
         {
             BuildingDefinition building = LoadBuilding(asset);
-            Vector2 spriteCells = building.Sprite.rect.size / _grid.CellPixelSize;
 
-            // Same width: the base spans the whole image. Taller sprite allowed: the roof may overlap upper cells.
-            Assert.That(building.Footprint.x, Is.GreaterThanOrEqualTo(1));
-            Assert.That(building.Footprint.y, Is.GreaterThanOrEqualTo(1));
-            Assert.That(spriteCells.x, Is.EqualTo(building.Footprint.x));
-            Assert.That(spriteCells.y, Is.GreaterThanOrEqualTo(building.Footprint.y));
+            // ADR-007 invariant: the image is its cells, no larger, so nothing draws outside them.
+            Assert.That(building.Sprite.rect.size, Is.EqualTo((Vector2)building.Footprint * _grid.CellPixelSize));
         }
 
         [TestCaseSource(nameof(Buildings))]
-        public void Building_SpritePivotIsBottomCentreOfBase(
+        public void Building_SpritePivotIsFootprintCentre(
             string displayName, string asset, int health, string sprite, int footprintX, int footprintY)
         {
             Sprite image = LoadBuilding(asset).Sprite;
 
-            // Bottom centre: placing the transform at the footprint's bottom edge puts the walls on their cells,
-            // and Y-sorting by pivot then compares where buildings stand, not where their roofs end.
-            Assert.That(image.pivot, Is.EqualTo(new Vector2(image.rect.width * 0.5f, 0f)));
+            // Centre: the factory puts the transform at the footprint centre, so the image covers exactly the cells.
+            Assert.That(image.pivot, Is.EqualTo(image.rect.size * 0.5f));
         }
 
         [TestCaseSource(nameof(Buildings))]
@@ -126,7 +120,7 @@ namespace StrategyDemo.Tests.EditMode
         {
             string[] produced = LoadBuilding("Barracks").ProducibleUnits.Select(unit => unit.DisplayName).ToArray();
 
-            Assert.That(produced, Is.EqualTo(new[] { "Soldier 1", "Soldier 2", "Soldier 3" }));
+            Assert.That(produced, Is.EqualTo(new[] { "Assault", "Rifleman", "Scout" }));
         }
 
         [Test]
@@ -161,7 +155,7 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [TestCaseSource(nameof(Soldiers))]
-        public void Soldier_HasSpecifiedHealthDamageRangeAndIcon(string asset, string displayName, int damage, int range, string icon)
+        public void Soldier_HasSpecifiedHealthDamageRangeAndSprite(string asset, string displayName, int damage, int range, string sprite)
         {
             UnitDefinition soldier = AssetDatabase.LoadAssetAtPath<UnitDefinition>($"{DataFolder}Units/{asset}.asset");
 
@@ -170,8 +164,8 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(soldier.MaxHealth, Is.EqualTo(SoldierHealth));
             Assert.That(soldier.Damage, Is.EqualTo(damage));
             Assert.That(soldier.AttackRange, Is.EqualTo(range));
-            Assert.That(soldier.Icon, Is.Not.Null);
-            Assert.That(soldier.Icon.name, Is.EqualTo(icon));
+            Assert.That(soldier.Sprite, Is.Not.Null);
+            Assert.That(soldier.Sprite.name, Is.EqualTo(sprite));
         }
 
         private static BuildingDefinition LoadBuilding(string asset)

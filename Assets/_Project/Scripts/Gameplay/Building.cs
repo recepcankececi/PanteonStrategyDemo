@@ -29,7 +29,7 @@ namespace StrategyDemo.Gameplay
         public bool IsMobile => false;
 
         /// <summary>Shows <paramref name="definition"/> standing on the area at <paramref name="origin"/>.</summary>
-        /// <param name="worldPosition">Bottom-edge middle of the area; the sprite's pivot goes here.</param>
+        /// <param name="worldPosition">Centre of the area; the sprite's pivot goes here.</param>
         /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
         public void Init(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector3 worldPosition)
         {
@@ -40,15 +40,6 @@ namespace StrategyDemo.Gameplay
             name = $"{definition.name}_{occupantId}";
             transform.position = worldPosition;
             Renderer.sprite = definition.Sprite;
-        }
-
-        /// <inheritdoc/>
-        public bool ContainsPoint(Vector2 worldPoint)
-        {
-            // The sprite's rectangle, roof included; transparent corners count too, which is fine for a click target.
-            Bounds bounds = Renderer.bounds;
-            return worldPoint.x >= bounds.min.x && worldPoint.x <= bounds.max.x
-                && worldPoint.y >= bounds.min.y && worldPoint.y <= bounds.max.y;
         }
 
         // Lazy so it also works on objects whose Awake has not run (EditMode tests).

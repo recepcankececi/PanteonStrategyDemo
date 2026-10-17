@@ -5,12 +5,13 @@ using UnityEngine;
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Plays a looping list of sprites on a <see cref="SpriteRenderer"/> at a fixed frame rate: a soldier's idle
-    /// animation without an Animator Controller per unit type.
+    /// Plays a looping list of sprites on a <see cref="SpriteRenderer"/> at a fixed frame rate: a soldier's walk
+    /// cycle without an Animator Controller per unit type.
     /// </summary>
     /// <remarks>
     /// Swapping <see cref="SpriteRenderer.sprite"/> between frames of the same atlas keeps the shared material,
-    /// so animated soldiers still batch (ADR-001 Karar 9). The sprite is assigned only when the frame changes;
+    /// so animated soldiers still batch (ADR-001 Karar 9). Stopping keeps the last sprite; the owner decides what
+    /// to show next (a soldier shows its standing pose). The sprite is assigned only when the frame changes;
     /// <c>Update</c> allocates nothing.
     /// </remarks>
     [RequireComponent(typeof(SpriteRenderer))]
@@ -30,7 +31,7 @@ namespace StrategyDemo.Gameplay
         /// <summary>Starts looping <paramref name="frames"/> from <paramref name="startFrame"/>.</summary>
         /// <param name="frames">Clip frames in order; read, never modified.</param>
         /// <param name="framesPerSecond">Playback speed; must be positive.</param>
-        /// <param name="startFrame">First frame shown, wrapped into the clip; lets soldiers of one type idle out of step.</param>
+        /// <param name="startFrame">First frame shown, wrapped into the clip; lets soldiers of one type walk out of step.</param>
         /// <exception cref="ArgumentNullException"><paramref name="frames"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="frames"/> is empty.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="framesPerSecond"/> is not positive.</exception>
@@ -57,6 +58,8 @@ namespace StrategyDemo.Gameplay
             // Non-negative modulo: a negative start would otherwise index before the first frame.
             CurrentFrame = ((startFrame % frames.Count) + frames.Count) % frames.Count;
             Renderer.sprite = _frames[CurrentFrame];
+            // Update runs only while a clip plays: most soldiers stand most of the time.
+            enabled = true;
         }
 
         /// <summary>Stops playback and forgets the clip; the renderer keeps its last sprite.</summary>
@@ -65,6 +68,7 @@ namespace StrategyDemo.Gameplay
             _frames = null;
             _timeInFrame = 0f;
             CurrentFrame = 0;
+            enabled = false;
         }
 
         /// <summary>

@@ -8,17 +8,16 @@ namespace StrategyDemo.Data
     /// Static description of a building type: name, image, footprint, health and what it can produce.
     /// </summary>
     /// <remarks>
-    /// The footprint covers only the building's base (the walls standing on the ground). The sprite's
-    /// pivot sits at the bottom centre of that base, so the roof is drawn over the cells above the
-    /// footprint without occupying them; Y-based sorting keeps the overlap correct (ADR-003, ADR-004).
+    /// The sprite is exactly the footprint (footprint × cell pixels) with its pivot at the centre, so a building
+    /// draws on its own cells and nowhere else (ADR-007). EditMode tests enforce this for every catalog entry.
     /// </remarks>
     [CreateAssetMenu(fileName = "BuildingDefinition", menuName = "Strategy Demo/Building Definition")]
     public sealed class BuildingDefinition : ScriptableObject
     {
         [SerializeField] private string _displayName;
-        [SerializeField, Tooltip("Board image; also used as the icon. Pivot at the bottom centre of the base.")]
+        [SerializeField, Tooltip("Board image; also used as the icon. Exactly footprint × cell pixels, pivot centred.")]
         private Sprite _sprite;
-        [SerializeField, Tooltip("Cells covered by the base (not the roof). Width must match the sprite's width in cells.")]
+        [SerializeField, Tooltip("Cells covered on the board. Must match the sprite's size in cells.")]
         private Vector2Int _footprint = Vector2Int.one;
         [SerializeField, Min(1)] private int _maxHealth = 1;
         [SerializeField, Tooltip("Units this building can produce. Empty = no production menu (R5).")]

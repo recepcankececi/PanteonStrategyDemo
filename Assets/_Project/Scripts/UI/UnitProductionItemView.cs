@@ -28,9 +28,9 @@ namespace StrategyDemo.UI
         public void Bind(UnitDefinition unit)
         {
             Unit = unit != null ? unit : throw new ArgumentNullException(nameof(unit));
-            _icon.sprite = unit.Icon;
+            _icon.sprite = unit.Sprite;
             // A uGUI Image without a sprite draws a white square; hide it instead.
-            _icon.enabled = unit.Icon != null;
+            _icon.enabled = unit.Sprite != null;
             _nameLabel.text = unit.DisplayName;
             _damageLabel.SetText("Damage {0}", unit.Damage);
         }

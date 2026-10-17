@@ -3,7 +3,6 @@ using NUnit.Framework;
 using StrategyDemo.Gameplay;
 using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEditor.U2D;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -16,8 +15,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string MainScenePath = "Assets/_Project/Scenes/Main.unity";
         private const string InputActionsPath = "Assets/_Project/Settings/GameInputActions.inputactions";
         private const string BuildingPrefabPath = "Assets/_Project/Prefabs/Board/Building.prefab";
-        private const string WorldAtlasPath = "Assets/_Project/Art/Atlases/WorldAtlas.spriteatlasv2";
-        private const string CellHighlightPath = "Assets/_Project/Art/Sprites/CellHighlight.png";
+        private const string CellHighlightPath = "Assets/_Project/Art/Generated/Board/CellHighlight.png";
         private const string BoardGroup = "--- Board ---";
         private const string SystemsGroup = "--- Systems ---";
         private const string BuildingsContainer = "Buildings";
@@ -75,29 +73,14 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void BuildingPrefab_DrawsUnlitOnObjectsLayerSortedByPivot()
+        public void BuildingPrefab_DrawsUnlitOnObjectsLayer()
         {
             var building = AssetDatabase.LoadAssetAtPath<Building>(BuildingPrefabPath);
             Assert.That(building, Is.Not.Null, BuildingPrefabPath);
 
             var renderer = building.GetComponent<SpriteRenderer>();
             Assert.That(renderer.sortingLayerName, Is.EqualTo(ObjectsLayer));
-            // ADR-004: Y-sorting must compare the base, not the middle of a tall sprite.
-            Assert.That(renderer.spriteSortPoint, Is.EqualTo(SpriteSortPoint.Pivot));
             Assert.That(renderer.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
-        }
-
-        [Test]
-        public void WorldAtlas_PacksCellHighlight()
-        {
-            // Read from disk; GetPackables() would also show unsaved in-memory edits.
-            SpriteAtlasAsset atlas = SpriteAtlasAsset.Load(WorldAtlasPath);
-            SerializedProperty packables = new SerializedObject(atlas).FindProperty("m_ImporterData.packables");
-            string[] packed = Enumerable.Range(0, packables.arraySize)
-                .Select(i => AssetDatabase.GetAssetPath(packables.GetArrayElementAtIndex(i).objectReferenceValue))
-                .ToArray();
-
-            Assert.That(packed, Has.Member(CellHighlightPath));
         }
 
         [Test]

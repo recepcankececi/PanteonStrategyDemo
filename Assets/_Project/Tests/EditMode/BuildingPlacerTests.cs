@@ -21,7 +21,7 @@ namespace StrategyDemo.Tests.EditMode
         private RecordingFactory _factory;
         private BuildingPlacer _placer;
         private BuildingDefinition _barracks;
-        private BuildingDefinition _house;
+        private BuildingDefinition _powerPlant;
         private int _changedCount;
 
         [SetUp]
@@ -34,14 +34,14 @@ namespace StrategyDemo.Tests.EditMode
             _placer.Changed += () => _changedCount++;
             _changedCount = 0;
             _barracks = Definition(new Vector2Int(3, 2));
-            _house = Definition(new Vector2Int(2, 2));
+            _powerPlant = Definition(new Vector2Int(2, 2));
         }
 
         [TearDown]
         public void DestroyDefinitions()
         {
             Object.DestroyImmediate(_barracks);
-            Object.DestroyImmediate(_house);
+            Object.DestroyImmediate(_powerPlant);
         }
 
         [Test]
@@ -120,9 +120,9 @@ namespace StrategyDemo.Tests.EditMode
         public void MoveTo_PartialOverlapByOneCell_IsInvalid()
         {
             PlaceAt(_barracks, new Vector2Int(2, 2));
-            _placer.Begin(_house);
+            _placer.Begin(_powerPlant);
 
-            // House covers (4..5, 3..4); the barracks covers (2..4, 2..3): they share cell (4, 3).
+            // Power Plant covers (4..5, 3..4); the barracks covers (2..4, 2..3): they share cell (4, 3).
             _placer.MoveTo(new Vector2Int(4, 3));
 
             Assert.That(_placer.IsCandidateValid, Is.False);
@@ -132,7 +132,7 @@ namespace StrategyDemo.Tests.EditMode
         public void MoveTo_RightNextToBuilding_IsValid()
         {
             PlaceAt(_barracks, new Vector2Int(2, 2));
-            _placer.Begin(_house);
+            _placer.Begin(_powerPlant);
 
             _placer.MoveTo(new Vector2Int(5, 2));
 
@@ -195,7 +195,7 @@ namespace StrategyDemo.Tests.EditMode
         public void TryPlace_OnOverlap_LeavesExistingBuildingUntouched()
         {
             PlaceAt(_barracks, new Vector2Int(2, 2));
-            _placer.Begin(_house);
+            _placer.Begin(_powerPlant);
             _placer.MoveTo(new Vector2Int(3, 3));
 
             bool placed = _placer.TryPlace(keepPlacing: false);
@@ -278,7 +278,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void TryPlace_KeepPlacing_UnlimitedBuildingsGetDistinctIds()
         {
-            _placer.Begin(_house);
+            _placer.Begin(_powerPlant);
             for (int x = 0; x < Width; x += 2)
             {
                 _placer.MoveTo(new Vector2Int(x, 0));
@@ -318,9 +318,9 @@ namespace StrategyDemo.Tests.EditMode
             _placer.Begin(_barracks);
             _placer.MoveTo(new Vector2Int(2, 2));
 
-            _placer.Begin(_house);
+            _placer.Begin(_powerPlant);
 
-            Assert.That(_placer.Definition, Is.SameAs(_house));
+            Assert.That(_placer.Definition, Is.SameAs(_powerPlant));
             Assert.That(_placer.HasCandidate, Is.False, "The old candidate was computed for the barracks' footprint.");
             Assert.That(_factory.Created, Is.Empty);
         }

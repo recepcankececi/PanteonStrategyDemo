@@ -39,14 +39,14 @@ namespace StrategyDemo.Core
         }
 
         /// <summary>
-        /// World position of the middle of the bottom edge of the area starting at <paramref name="areaOrigin"/>:
-        /// where a building's sprite pivot (bottom centre of its base) goes.
+        /// World position of the centre of the area starting at <paramref name="areaOrigin"/>: where the sprite
+        /// pivot of a building or soldier goes, since every board sprite is exactly its footprint with a centred pivot.
         /// </summary>
-        public static Vector3 FootprintBaseCenter(Vector2Int areaOrigin, Vector2Int footprint, Vector3 origin, float cellSize)
+        public static Vector3 FootprintCenter(Vector2Int areaOrigin, Vector2Int footprint, Vector3 origin, float cellSize)
         {
             return new Vector3(
                 origin.x + (areaOrigin.x + footprint.x * 0.5f) * cellSize,
-                origin.y + areaOrigin.y * cellSize,
+                origin.y + (areaOrigin.y + footprint.y * 0.5f) * cellSize,
                 origin.z);
         }
     }

@@ -1,27 +1,23 @@
 using System.Linq;
 using NUnit.Framework;
 using StrategyDemo.Data;
-using StrategyDemo.EditorTools;
 using StrategyDemo.Gameplay;
 using StrategyDemo.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEditor.U2D;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Assets and scene objects selection and production rely on (M4): soldier art, prefabs, highlight, panel.</summary>
+    /// <summary>Assets and scene objects selection and production rely on (M4): prefabs, highlight, panel.</summary>
     public class SelectionProductionAssetTests
     {
         private const string MainScenePath = "Assets/_Project/Scenes/Main.unity";
         private const string UnitPrefabPath = "Assets/_Project/Prefabs/Board/Unit.prefab";
         private const string RowPrefabPath = "Assets/_Project/Prefabs/UI/UnitProductionItem.prefab";
-        private const string WorldAtlasPath = "Assets/_Project/Art/Atlases/WorldAtlas.spriteatlasv2";
-        private const string CellHighlightPath = "Assets/_Project/Art/Sprites/CellHighlight.png";
+        private const string CellHighlightPath = "Assets/_Project/Art/Generated/Board/CellHighlight.png";
         private const string BarracksPath = "Assets/_Project/ScriptableObjects/Buildings/Barracks.asset";
-        private const string UnitsFolder = "Assets/_Project/ScriptableObjects/Units/";
         private const string BoardGroup = "--- Board ---";
         private const string UiGroup = "--- UI ---";
         private const string ObjectsLayer = "Objects";
@@ -43,47 +39,6 @@ namespace StrategyDemo.Tests.EditMode
             EditorSceneManager.ClosePreviewScene(_scene);
         }
 
-        [TestCase("Soldier1")]
-        [TestCase("Soldier2")]
-        [TestCase("Soldier3")]
-        public void Soldier_IdleFramesShareOneSizeAndPivotAtBoardDensity(string asset)
-        {
-            UnitDefinition unit = AssetDatabase.LoadAssetAtPath<UnitDefinition>(UnitsFolder + asset + ".asset");
-            Assert.That(unit.IdleFrames, Is.Not.Empty);
-            Sprite first = unit.IdleFrames[0];
-
-            // Equal rects and pivots are what keep the idle animation from jittering.
-            foreach (Sprite frame in unit.IdleFrames)
-            {
-                Assert.That(frame, Is.Not.Null);
-                Assert.That(frame.rect.size, Is.EqualTo(first.rect.size), frame.name);
-                Assert.That(frame.pivot, Is.EqualTo(first.pivot), frame.name);
-                Assert.That(frame.pixelsPerUnit, Is.EqualTo(UnitSheetSlicer.PixelsPerUnit), frame.name);
-            }
-
-            // The pivot lies below the feet, on the cell's bottom edge like a building's.
-            Assert.That(first.pivot.y, Is.EqualTo(-UnitSheetSlicer.FeetAboveCellBottom));
-            Assert.That(unit.Icon, Is.SameAs(first), "The information panel icon is the first idle frame.");
-            Assert.That(unit.IdleFramesPerSecond, Is.GreaterThan(0f));
-        }
-
-        [TestCase("Soldier1")]
-        [TestCase("Soldier2")]
-        [TestCase("Soldier3")]
-        public void WorldAtlas_PacksSoldierSheet(string asset)
-        {
-            UnitDefinition unit = AssetDatabase.LoadAssetAtPath<UnitDefinition>(UnitsFolder + asset + ".asset");
-            string sheet = AssetDatabase.GetAssetPath(unit.IdleFrames[0]);
-            // Read from disk; GetPackables() would also show unsaved in-memory edits.
-            SpriteAtlasAsset atlas = SpriteAtlasAsset.Load(WorldAtlasPath);
-            SerializedProperty packables = new SerializedObject(atlas).FindProperty("m_ImporterData.packables");
-            string[] packed = Enumerable.Range(0, packables.arraySize)
-                .Select(i => AssetDatabase.GetAssetPath(packables.GetArrayElementAtIndex(i).objectReferenceValue))
-                .ToArray();
-
-            Assert.That(packed, Has.Member(sheet));
-        }
-
         [Test]
         public void Barracks_SpawnsBelowMiddleOfBottomRow()
         {
@@ -93,17 +48,19 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void UnitPrefab_DrawsUnlitOnObjectsLayerSortedByPivotWithFlipbook()
+        public void UnitPrefab_DrawsUnlitOnObjectsLayerWithFlipbook()
         {
             var unit = AssetDatabase.LoadAssetAtPath<Unit>(UnitPrefabPath);
             Assert.That(unit, Is.Not.Null, UnitPrefabPath);
 
-            var renderer = unit.GetComponent<SpriteRenderer>();
-            Assert.That(renderer.sortingLayerName, Is.EqualTo(ObjectsLayer), "Same layer as buildings so they Y-sort together.");
-            Assert.That(renderer.spriteSortPoint, Is.EqualTo(SpriteSortPoint.Pivot));
+            var renderer = unit.GetComponentInChildren<SpriteRenderer>();
+            Assert.That(renderer.sortingLayerName, Is.EqualTo(ObjectsLayer), "Same layer as buildings: one batch for both.");
             Assert.That(renderer.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
-            Assert.That(unit.GetComponent<SpriteFlipbook>(), Is.Not.Null);
-            Assert.That(unit.GetComponent<Animator>(), Is.Null, "Idle animation uses the flipbook, not an Animator.");
+            Assert.That(unit.GetComponent<SpriteRenderer>(), Is.Null, "The root never rotates, so it draws nothing.");
+            Assert.That(renderer.transform.parent, Is.SameAs(unit.transform));
+            Assert.That(renderer.GetComponent<SpriteFlipbook>(), Is.Not.Null);
+            Assert.That(new SerializedObject(unit).FindProperty("_visual").objectReferenceValue, Is.SameAs(renderer.GetComponent<SpriteFlipbook>()));
+            Assert.That(unit.GetComponent<Animator>(), Is.Null, "The walk cycle uses the flipbook, not an Animator.");
         }
 
         [Test]

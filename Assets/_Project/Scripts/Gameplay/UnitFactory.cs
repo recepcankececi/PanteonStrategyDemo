@@ -50,7 +50,7 @@ namespace StrategyDemo.Gameplay
             Unit unit = _pool.Get();
             try
             {
-                unit.Init(definition, cell, occupantId, _gridView.FootprintBaseCenter(cell, Vector2Int.one));
+                unit.Init(definition, cell, occupantId, _gridView.FootprintCenter(cell, Vector2Int.one));
             }
             catch
             {

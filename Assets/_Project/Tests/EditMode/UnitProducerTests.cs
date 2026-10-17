@@ -135,14 +135,14 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void TryProduce_OtherBuildingsAroundSpawnCell_NeverSpawnsBehindThem()
         {
-            // Bottom-edge Barracks with a House left and right: the only way out is through the Barracks itself.
+            // Bottom-edge Barracks with a 2×2 building left and right: the only way out is through the Barracks itself.
             Vector2Int origin = PlaceBarracks(new Vector2Int(3, 0));
             _grid.Occupy(new Vector2Int(1, 0), new Vector2Int(2, 2), _registry.NextId());
             _grid.Occupy(new Vector2Int(6, 0), new Vector2Int(2, 2), _registry.NextId());
 
             _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
 
-            // Free cells at (0, 0) and (8, 0) are as close in steps but walled off by the houses; above the Barracks is not.
+            // Free cells at (0, 0) and (8, 0) are as close in steps but walled off by those buildings; above the Barracks is not.
             Assert.That(cell.y, Is.EqualTo(2));
             Assert.That(cell.x, Is.InRange(3, 5));
         }

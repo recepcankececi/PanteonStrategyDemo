@@ -1,9 +1,7 @@
 {
     "name": "StrategyDemo.EditorTools",
     "rootNamespace": "StrategyDemo.EditorTools",
-    "references": [
-        "Unity.2D.Sprite.Editor"
-    ],
+    "references": [],
     "includePlatforms": [
         "Editor"
     ],

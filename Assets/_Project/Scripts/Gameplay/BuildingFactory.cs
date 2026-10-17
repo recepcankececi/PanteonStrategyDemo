@@ -28,7 +28,7 @@ namespace StrategyDemo.Gameplay
         public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
         {
             Building building = Object.Instantiate(_prefab, _container);
-            building.Init(definition, origin, occupantId, _gridView.FootprintBaseCenter(origin, definition.Footprint));
+            building.Init(definition, origin, occupantId, _gridView.FootprintCenter(origin, definition.Footprint));
             return building;
         }
     }

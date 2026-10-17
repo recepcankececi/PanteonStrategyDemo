@@ -63,22 +63,12 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void Create_PlacesPivotAtBottomMiddleOfFootprint()
-        {
-            _factory.Create(_barracks, new Vector2Int(4, 2), 1);
-
-            // Cells (4..6, 2..3): bottom edge middle at x = 4 + 1.5, y = 2.
-            Assert.That(_container.GetChild(0).position, Is.EqualTo(BoardOrigin + new Vector3(5.5f, 2f, 0f)));
-        }
-
-        [Test]
-        public void Building_ContainsPoint_CoversItsWholeImageAndIsStatic()
+        public void Create_PlacesPivotAtCentreOfFootprint()
         {
             var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1);
 
-            // The test sprite is 3×2 world units with its pivot at the bottom middle: image spans x 4..7, y 2..4.
-            Assert.That(building.ContainsPoint(BoardOrigin + new Vector3(6.5f, 3.9f, 0f)), Is.True);
-            Assert.That(building.ContainsPoint(BoardOrigin + new Vector3(7.5f, 3f, 0f)), Is.False);
+            // Cells (4..6, 2..3): centre at x = 4 + 1.5, y = 2 + 1.
+            Assert.That(building.transform.position, Is.EqualTo(BoardOrigin + new Vector3(5.5f, 3f, 0f)));
             Assert.That(building.IsMobile, Is.False);
         }
 

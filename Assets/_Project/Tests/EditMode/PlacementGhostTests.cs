@@ -21,14 +21,14 @@ namespace StrategyDemo.Tests.EditMode
         private SpriteRenderer _buildingRenderer;
         private SpriteRenderer _footprintRenderer;
         private BuildingDefinition _barracks;
-        private BuildingDefinition _house;
+        private BuildingDefinition _powerPlant;
 
         [SetUp]
         public void CreateGhost()
         {
             _board = new TestBoard(BoardOrigin, 10, 8);
             _barracks = _board.Definition("Barracks", new Vector2Int(3, 2));
-            _house = _board.Definition("House", new Vector2Int(2, 2));
+            _powerPlant = _board.Definition("PowerPlant", new Vector2Int(2, 2));
             _placer = new BuildingPlacer(new GridMap(10, 8), new OccupantRegistry(), new NullBuildingFactory());
 
             _ghostObject = new GameObject(nameof(PlacementGhostTests));
@@ -78,7 +78,7 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void ValidCandidate_ShowsBuildingAtFootprintBaseWithGreenTint()
+        public void ValidCandidate_ShowsBuildingAtFootprintCentreWithGreenTint()
         {
             _ghost.Init(_placer, _board.View);
             _placer.Begin(_barracks);
@@ -88,10 +88,10 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_buildingRenderer.enabled, Is.True);
             Assert.That(_footprintRenderer.enabled, Is.True);
             Assert.That(_buildingRenderer.sprite, Is.SameAs(_barracks.Sprite));
-            // Bottom-edge middle of cells (2..4, 3..4): x = 2 + 1.5, y = 3, offset by the board origin.
-            Assert.That(_ghostObject.transform.position, Is.EqualTo(BoardOrigin + new Vector3(3.5f, 3f, 0f)));
+            // Centre of cells (2..4, 3..4): x = 2 + 1.5, y = 3 + 1, offset by the board origin.
+            Assert.That(_ghostObject.transform.position, Is.EqualTo(BoardOrigin + new Vector3(3.5f, 4f, 0f)));
             Assert.That(_footprintRenderer.size, Is.EqualTo(new Vector2(3f, 2f)));
-            Assert.That(_footprintRenderer.transform.localPosition, Is.EqualTo(new Vector3(0f, 1f, 0f)));
+            Assert.That(_footprintRenderer.transform.localPosition, Is.EqualTo(Vector3.zero), "Overlay and building share the centre.");
             Assert.That(_buildingRenderer.color, Is.EqualTo(Tint("_validBuildingTint")));
             Assert.That(_footprintRenderer.color, Is.EqualTo(Tint("_validFootprintTint")));
         }
@@ -116,10 +116,10 @@ namespace StrategyDemo.Tests.EditMode
             _placer.Begin(_barracks);
             _placer.MoveTo(new Vector2Int(2, 3));
 
-            _placer.Begin(_house);
+            _placer.Begin(_powerPlant);
             _placer.MoveTo(new Vector2Int(5, 5));
 
-            Assert.That(_buildingRenderer.sprite, Is.SameAs(_house.Sprite));
+            Assert.That(_buildingRenderer.sprite, Is.SameAs(_powerPlant.Sprite));
             Assert.That(_footprintRenderer.size, Is.EqualTo(new Vector2(2f, 2f)));
         }
 

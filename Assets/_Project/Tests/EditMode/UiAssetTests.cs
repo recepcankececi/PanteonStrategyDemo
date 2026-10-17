@@ -4,33 +4,19 @@ using StrategyDemo.EditorTools;
 using StrategyDemo.UI;
 using TMPro;
 using UnityEditor;
-using UnityEditor.U2D;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>UI assets outside the scene: the UI atlas contents, the menu row prefab and TMP resources.</summary>
+    /// <summary>UI assets outside the scene: the menu and production row prefabs and TMP resources.</summary>
     public class UiAssetTests
     {
-        private const string UiAtlasPath = "Assets/_Project/Art/Atlases/UIAtlas.spriteatlasv2";
         private const string ItemPrefabPath = "Assets/_Project/Prefabs/UI/ProductionMenuItem.prefab";
+        private const string UnitRowPrefabPath = "Assets/_Project/Prefabs/UI/UnitProductionItem.prefab";
+        private const string RowSpritePath = GeneratedArtImporter.UiFolder + "Row.png";
+        private const string ButtonSpritePath = GeneratedArtImporter.UiFolder + "Button.png";
         private const string ScriptPropertyName = "m_Script";
-
-        [Test]
-        public void UiAtlas_PacksExactlyTheStitchedPanels()
-        {
-            // Read the .spriteatlasv2 file itself: SpriteAtlas.GetPackables() reflects in-memory edits that
-            // were never saved, so it can pass while the asset on disk still packs something else.
-            SpriteAtlasAsset atlas = SpriteAtlasAsset.Load(UiAtlasPath);
-            SerializedProperty packables = new SerializedObject(atlas).FindProperty("m_ImporterData.packables");
-            string[] packed = Enumerable.Range(0, packables.arraySize)
-                .Select(i => AssetDatabase.GetAssetPath(packables.GetArrayElementAtIndex(i).objectReferenceValue))
-                .ToArray();
-            string[] expected = PanelSheetStitcher.SourceSheets.Select(PanelSheetStitcher.OutputPathFor).ToArray();
-
-            // Only sprites the UI uses: a folder entry would pack every unused Tiny Swords sheet too.
-            Assert.That(packed, Is.EquivalentTo(expected));
-        }
 
         [Test]
         public void ItemPrefab_HasEveryReferenceAssigned()
@@ -66,13 +52,16 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(raycastTargets, Is.EqualTo(new[] { background }));
         }
 
-        [Test]
-        public void ItemPrefab_BackgroundUsesStitchedPaper()
+        [TestCase(ItemPrefabPath, RowSpritePath)]
+        [TestCase(UnitRowPrefabPath, ButtonSpritePath)]
+        public void RowPrefab_BackgroundIsSlicedGeneratedSprite(string prefabPath, string spritePath)
         {
-            var image = AssetDatabase.LoadAssetAtPath<ProductionMenuItemView>(ItemPrefabPath).GetComponent<Image>();
+            var image = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath).GetComponent<Image>();
 
-            Assert.That(image.sprite, Is.Not.Null);
-            Assert.That(AssetDatabase.GetAssetPath(image.sprite), Is.EqualTo(PanelSheetStitcher.OutputPathFor(PanelSheetStitcher.SourceSheets[0])));
+            Assert.That(image.sprite, Is.Not.Null, prefabPath);
+            Assert.That(AssetDatabase.GetAssetPath(image.sprite), Is.EqualTo(spritePath));
+            Assert.That(image.type, Is.EqualTo(Image.Type.Sliced));
+            Assert.That(image.pixelsPerUnitMultiplier, Is.EqualTo(1f));
         }
 
         [Test]

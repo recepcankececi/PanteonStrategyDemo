@@ -45,7 +45,7 @@ namespace StrategyDemo.Tests.EditMode
         public BuildingDefinition Definition(string assetName, Vector2Int footprint)
         {
             var texture = new Texture2D(footprint.x, footprint.y) { name = assetName };
-            Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, footprint.x, footprint.y), new Vector2(0.5f, 0f), 1f);
+            Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, footprint.x, footprint.y), new Vector2(0.5f, 0.5f), 1f);
             var definition = ScriptableObject.CreateInstance<BuildingDefinition>();
             definition.name = assetName;
             var serialized = new SerializedObject(definition);
@@ -76,11 +76,14 @@ namespace StrategyDemo.Tests.EditMode
             return definition;
         }
 
-        /// <summary>Creates a soldier definition with <paramref name="frameCount"/> idle frames; destroyed with the board.</summary>
+        /// <summary>
+        /// Creates a soldier definition with a standing sprite and <paramref name="frameCount"/> walk frames; destroyed
+        /// with the board.
+        /// </summary>
         public UnitDefinition Unit(string assetName, int damage = 1, int frameCount = 2)
         {
-            // At least one pixel wide: a texture cannot be empty, even for a definition without frames.
-            var texture = new Texture2D(Mathf.Max(frameCount, 1), 1) { name = assetName };
+            // One pixel per walk frame plus one for the standing sprite.
+            var texture = new Texture2D(frameCount + 1, 1) { name = assetName };
             _owned.Add(texture);
             var definition = ScriptableObject.CreateInstance<UnitDefinition>();
             definition.name = assetName;
@@ -89,19 +92,38 @@ namespace StrategyDemo.Tests.EditMode
             var serialized = new SerializedObject(definition);
             serialized.FindProperty("_displayName").stringValue = assetName;
             serialized.FindProperty("_damage").intValue = damage;
-            SerializedProperty frames = serialized.FindProperty("_idleFrames");
+            Sprite standing = Sprite.Create(texture, new Rect(frameCount, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
+            standing.name = $"{assetName}_Stand";
+            _owned.Add(standing);
+            serialized.FindProperty("_sprite").objectReferenceValue = standing;
+            SerializedProperty frames = serialized.FindProperty("_walkFrames");
             frames.arraySize = frameCount;
             for (int i = 0; i < frameCount; i++)
             {
-                Sprite frame = Sprite.Create(texture, new Rect(i, 0f, 1f, 1f), new Vector2(0.5f, 0f), 1f);
-                frame.name = $"{assetName}_{i}";
+                Sprite frame = Sprite.Create(texture, new Rect(i, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
+                frame.name = $"{assetName}_Walk_{i}";
                 _owned.Add(frame);
                 frames.GetArrayElementAtIndex(i).objectReferenceValue = frame;
             }
 
-            serialized.FindProperty("_icon").objectReferenceValue = frameCount > 0 ? frames.GetArrayElementAtIndex(0).objectReferenceValue : null;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return definition;
+        }
+
+        /// <summary>
+        /// Builds a soldier like the Unit prefab: <see cref="Unit"/> on the root, renderer and flipbook on a "Visual"
+        /// child. The caller destroys the returned object.
+        /// </summary>
+        public static Unit CreateUnitObject(string name)
+        {
+            var root = new GameObject(name);
+            var visual = new GameObject("Visual", typeof(SpriteRenderer), typeof(SpriteFlipbook));
+            visual.transform.SetParent(root.transform, false);
+            var unit = root.AddComponent<Unit>();
+            var serialized = new SerializedObject(unit);
+            serialized.FindProperty("_visual").objectReferenceValue = visual.GetComponent<SpriteFlipbook>();
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return unit;
         }
 
         public void Dispose()

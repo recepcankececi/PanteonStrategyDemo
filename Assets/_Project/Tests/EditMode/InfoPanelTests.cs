@@ -155,7 +155,7 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_damageLabel.gameObject.activeSelf, Is.True);
             Assert.That(Text(_damageLabel), Is.EqualTo("Damage 5"));
             Assert.That(_productionSection.activeSelf, Is.False);
-            Assert.That(_image.sprite, Is.SameAs(_soldiers[1].Icon));
+            Assert.That(_image.sprite, Is.SameAs(_soldiers[1].Sprite));
         }
 
         [Test]
@@ -235,7 +235,7 @@ namespace StrategyDemo.Tests.EditMode
 
         private void SelectUnit(UnitDefinition definition, Vector2Int cell)
         {
-            var unit = new GameObject(definition.name, typeof(SpriteRenderer), typeof(SpriteFlipbook)).AddComponent<Unit>();
+            Unit unit = TestBoard.CreateUnitObject(definition.name);
             SceneManager.MoveGameObjectToScene(unit.gameObject, _scene);
             int id = _registry.NextId();
             unit.Init(definition, cell, id, Vector3.zero);
@@ -304,11 +304,6 @@ namespace StrategyDemo.Tests.EditMode
             public Vector2Int Footprint => Vector2Int.one;
 
             public bool IsMobile => true;
-
-            public bool ContainsPoint(Vector2 worldPoint)
-            {
-                return false;
-            }
         }
 
         private sealed class FakeUnitFactory : IUnitFactory

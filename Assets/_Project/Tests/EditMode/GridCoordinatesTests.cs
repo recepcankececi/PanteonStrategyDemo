@@ -81,12 +81,22 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void FootprintBaseCenter_ReturnsMiddleOfBottomEdge()
+        public void FootprintCenter_ReturnsMiddleOfArea()
         {
-            Vector3 baseCenter = GridCoordinates.FootprintBaseCenter(new Vector2Int(2, 1), new Vector2Int(3, 2), Origin, CellSize);
+            Vector3 center = GridCoordinates.FootprintCenter(new Vector2Int(2, 1), new Vector2Int(3, 2), Origin, CellSize);
 
-            Assert.That(baseCenter.x, Is.EqualTo(Origin.x + 3.5f).Within(Tolerance));
-            Assert.That(baseCenter.y, Is.EqualTo(Origin.y + 1f).Within(Tolerance));
+            // Cells (2..4, 1..2): x = 2 + 3/2, y = 1 + 2/2, in cells, scaled and offset by the board origin.
+            Assert.That(center.x, Is.EqualTo(Origin.x + 3.5f * CellSize).Within(Tolerance));
+            Assert.That(center.y, Is.EqualTo(Origin.y + 2f * CellSize).Within(Tolerance));
+        }
+
+        [Test]
+        public void FootprintCenter_SingleCell_EqualsCellToWorld()
+        {
+            Vector2Int cell = new Vector2Int(-1, 4);
+
+            Assert.That(GridCoordinates.FootprintCenter(cell, Vector2Int.one, Origin, CellSize),
+                Is.EqualTo(GridCoordinates.CellToWorld(cell, Origin, CellSize)));
         }
     }
 }

@@ -6,7 +6,7 @@ using Object = UnityEngine.Object;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>The lightweight idle animation: frame timing, looping and argument checks.</summary>
+    /// <summary>The lightweight walk-cycle player: frame timing, looping and argument checks.</summary>
     public class SpriteFlipbookTests
     {
         private const float FramesPerSecond = 10f;

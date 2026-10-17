@@ -39,28 +39,6 @@ namespace StrategyDemo.Gameplay
             SetSelected(OccupantOf(cell));
         }
 
-        /// <summary>
-        /// Selects what the player clicked: the occupant of <paramref name="cell"/>, or any occupant whose image covers
-        /// <paramref name="worldPoint"/> (a building's roof reaches above its cells, a soldier's head above its cell).
-        /// When several overlap, the front-most one wins: the lowest base, as drawn by the Y-sorting (ADR-004).
-        /// Nothing hit clears the selection.
-        /// </summary>
-        /// <remarks>Checks every occupant once: O(n) per click, which is click-rate work, never per frame.</remarks>
-        public void SelectAt(Vector2Int cell, Vector2 worldPoint)
-        {
-            IBoardOccupant best = OccupantOf(cell);
-            foreach (IBoardOccupant occupant in _occupants.All)
-            {
-                // Strictly lower: on a tie the cell's own occupant (checked first) keeps the click.
-                if (occupant.ContainsPoint(worldPoint) && (best == null || occupant.Origin.y < best.Origin.y))
-                {
-                    best = occupant;
-                }
-            }
-
-            SetSelected(best);
-        }
-
         /// <summary>Clears the selection (e.g. Esc). Ignored when nothing is selected.</summary>
         public void Clear()
         {

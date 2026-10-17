@@ -21,8 +21,8 @@ namespace StrategyDemo.Tests.EditMode
         public void CreateFactory()
         {
             _board = new TestBoard(new Vector3(-3f, 2f, 0f), 10, 8);
-            _soldier = _board.Unit("Soldier1", frameCount: 3);
-            _prefabObject = new GameObject("Unit", typeof(SpriteRenderer), typeof(SpriteFlipbook), typeof(Unit));
+            _soldier = _board.Unit("Assault", frameCount: 3);
+            _prefabObject = TestBoard.CreateUnitObject("Unit").gameObject;
             _units = new GameObject("Units").transform;
             _pool = new GameObject("Pool_Unit").transform;
             _factory = new UnitFactory(_prefabObject.GetComponent<Unit>(), _units, _pool, _board.View);
@@ -54,7 +54,7 @@ namespace StrategyDemo.Tests.EditMode
 
             Assert.That(unit.transform.parent, Is.SameAs(_units));
             Assert.That(unit.gameObject.activeSelf, Is.True);
-            Assert.That(unit.name, Is.EqualTo("Soldier1_7"));
+            Assert.That(unit.name, Is.EqualTo("Assault_7"));
             Assert.That(unit.Definition, Is.SameAs(_soldier));
             Assert.That(unit.OccupantId, Is.EqualTo(7));
             Assert.That(unit.Origin, Is.EqualTo(new Vector2Int(2, 1)));
@@ -62,22 +62,22 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void Create_PlacesPivotAtBottomMiddleOfCell()
+        public void Create_PlacesPivotAtCentreOfCell()
         {
             Unit unit = (Unit)_factory.Create(_soldier, new Vector2Int(2, 1), 1);
 
             // Board origin (-3, 2): cell (2, 1) spans x -1..0 and y 3..4.
-            Assert.That(unit.transform.position, Is.EqualTo(new Vector3(-0.5f, 3f, 0f)));
+            Assert.That(unit.transform.position, Is.EqualTo(new Vector3(-0.5f, 3.5f, 0f)));
         }
 
         [Test]
-        public void Create_StartsIdleAnimationOnAFrameOfTheClip()
+        public void Create_ShowsStandingSpriteWithoutAnimation()
         {
             Unit unit = (Unit)_factory.Create(_soldier, Vector2Int.zero, 4);
-            var flipbook = unit.GetComponent<SpriteFlipbook>();
 
-            Assert.That(flipbook.IsPlaying, Is.True);
-            Assert.That(_soldier.IdleFrames, Has.Member(unit.GetComponent<SpriteRenderer>().sprite));
+            Assert.That(unit.GetComponentInChildren<SpriteFlipbook>().IsPlaying, Is.False, "A new soldier stands still.");
+            Assert.That(unit.GetComponentInChildren<SpriteRenderer>().sprite, Is.SameAs(_soldier.Sprite));
+            Assert.That(unit.IsWalking, Is.False);
         }
 
         [Test]
@@ -91,8 +91,8 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(unit.gameObject.activeSelf, Is.False);
             Assert.That(unit.Definition, Is.Null);
             Assert.That(unit.OccupantId, Is.Zero);
-            Assert.That(unit.GetComponent<SpriteRenderer>().sprite, Is.Null);
-            Assert.That(unit.GetComponent<SpriteFlipbook>().IsPlaying, Is.False);
+            Assert.That(unit.GetComponentInChildren<SpriteRenderer>().sprite, Is.Null);
+            Assert.That(unit.GetComponentInChildren<SpriteFlipbook>().IsPlaying, Is.False);
         }
 
         [Test]
@@ -105,7 +105,7 @@ namespace StrategyDemo.Tests.EditMode
 
             Assert.That(second, Is.SameAs(first));
             Assert.That(_factory.CreatedCount, Is.EqualTo(1));
-            Assert.That(second.name, Is.EqualTo("Soldier1_2"));
+            Assert.That(second.name, Is.EqualTo("Assault_2"));
         }
 
         [Test]
@@ -128,18 +128,19 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void ContainsPoint_OnSoldierImage_TrueAndAfterReleaseFalse()
+        public void Release_WalkingTurnedSoldier_ComesBackStandingAndFacingUp()
         {
-            // Test frames are 1×1 world unit with the pivot at the bottom middle: the image spans x -1..0, y 3..4.
-            Unit unit = (Unit)_factory.Create(_soldier, new Vector2Int(2, 1), 1);
-
-            Assert.That(unit.ContainsPoint(new Vector2(-0.5f, 3.5f)), Is.True);
-            Assert.That(unit.ContainsPoint(new Vector2(-0.5f, 4.5f)), Is.False);
-            Assert.That(unit.IsMobile, Is.True);
+            Unit unit = (Unit)_factory.Create(_soldier, Vector2Int.zero, 1);
+            unit.SetWalking(true);
+            unit.FaceTowards(Vector2.left);
 
             _factory.Release(unit);
+            Unit reused = (Unit)_factory.Create(_soldier, Vector2Int.one, 2);
 
-            Assert.That(unit.ContainsPoint(new Vector2(-0.5f, 3.5f)), Is.False, "A pooled soldier cannot be clicked.");
+            Assert.That(reused, Is.SameAs(unit));
+            Assert.That(reused.IsWalking, Is.False);
+            Assert.That(reused.GetComponentInChildren<SpriteFlipbook>().IsPlaying, Is.False);
+            Assert.That(reused.GetComponentInChildren<SpriteRenderer>().transform.rotation, Is.EqualTo(Quaternion.identity));
         }
 
         [Test]
