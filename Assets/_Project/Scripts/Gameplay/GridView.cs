@@ -58,5 +58,17 @@ namespace StrategyDemo.Gameplay
         {
             return GridCoordinates.WorldToCell(worldPosition, _origin, GridConfig.CellWorldSize);
         }
+
+        /// <summary>Bottom-left cell of a <paramref name="footprint"/> centred under <paramref name="worldPosition"/>; may be off the board.</summary>
+        public Vector2Int FootprintOriginAt(Vector3 worldPosition, Vector2Int footprint)
+        {
+            return GridCoordinates.FootprintOriginAt(worldPosition, _origin, GridConfig.CellWorldSize, footprint);
+        }
+
+        /// <summary>World position of the bottom-edge middle of the area at <paramref name="areaOrigin"/> (a building's pivot).</summary>
+        public Vector3 FootprintBaseCenter(Vector2Int areaOrigin, Vector2Int footprint)
+        {
+            return GridCoordinates.FootprintBaseCenter(areaOrigin, footprint, _origin, GridConfig.CellWorldSize);
+        }
     }
 }

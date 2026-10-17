@@ -46,5 +46,47 @@ namespace StrategyDemo.Tests.EditMode
 
             Assert.That(GridCoordinates.WorldToCell(centre, Origin, CellSize), Is.EqualTo(cell));
         }
+
+        [Test]
+        public void FootprintOriginAt_OddFootprint_PutsCursorCellInTheMiddle()
+        {
+            // Cursor in cell (5, 4) relative to the board origin; a 3×3 area centred on it starts at (4, 3).
+            Vector3 cursor = Origin + new Vector3(5.3f, 4.7f, 0f);
+
+            Vector2Int areaOrigin = GridCoordinates.FootprintOriginAt(cursor, Origin, CellSize, new Vector2Int(3, 3));
+
+            Assert.That(areaOrigin, Is.EqualTo(new Vector2Int(4, 3)));
+        }
+
+        [TestCase(5.3f, 4)]
+        [TestCase(5.7f, 5)]
+        public void FootprintOriginAt_EvenFootprint_SnapsToNearestCellCorner(float cursorX, int expectedX)
+        {
+            // A 2-wide area is centred on a cell edge: x = 5.3 is nearest edge 5 (cells 4..5), 5.7 nearest edge 6 (cells 5..6).
+            Vector3 cursor = Origin + new Vector3(cursorX, 0.5f, 0f);
+
+            Vector2Int areaOrigin = GridCoordinates.FootprintOriginAt(cursor, Origin, CellSize, new Vector2Int(2, 1));
+
+            Assert.That(areaOrigin.x, Is.EqualTo(expectedX));
+        }
+
+        [Test]
+        public void FootprintOriginAt_CursorLeftOfBoard_ReturnsNegativeOrigin()
+        {
+            Vector3 cursor = Origin + new Vector3(-0.2f, 0.5f, 0f);
+
+            Vector2Int areaOrigin = GridCoordinates.FootprintOriginAt(cursor, Origin, CellSize, new Vector2Int(3, 1));
+
+            Assert.That(areaOrigin, Is.EqualTo(new Vector2Int(-2, 0)));
+        }
+
+        [Test]
+        public void FootprintBaseCenter_ReturnsMiddleOfBottomEdge()
+        {
+            Vector3 baseCenter = GridCoordinates.FootprintBaseCenter(new Vector2Int(2, 1), new Vector2Int(3, 2), Origin, CellSize);
+
+            Assert.That(baseCenter.x, Is.EqualTo(Origin.x + 3.5f).Within(Tolerance));
+            Assert.That(baseCenter.y, Is.EqualTo(Origin.y + 1f).Within(Tolerance));
+        }
     }
 }

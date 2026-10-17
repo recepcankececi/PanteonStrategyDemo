@@ -1,4 +1,5 @@
 using System;
+using StrategyDemo.Core;
 using StrategyDemo.Data;
 using StrategyDemo.Gameplay;
 using StrategyDemo.UI;
@@ -17,11 +18,19 @@ namespace StrategyDemo.App
         [SerializeField] private GridView _gridView;
         [SerializeField] private BoardCameraFitter _cameraFitter;
         [SerializeField] private ProductionMenu _productionMenu;
+        [SerializeField] private Building _buildingPrefab;
+        [SerializeField, Tooltip("Board container placed buildings are parented under.")]
+        private Transform _buildingsRoot;
+        [SerializeField] private PlacementGhost _placementGhost;
+        [SerializeField] private InputController _inputController;
+
+        private BuildingPlacer _placer;
 
         private void Awake()
         {
             // Fail at start-up with a clear message instead of a NullReferenceException deep in a system.
-            if (_gridConfig == null || _buildingCatalog == null || _gridView == null || _cameraFitter == null || _productionMenu == null)
+            if (_gridConfig == null || _buildingCatalog == null || _gridView == null || _cameraFitter == null || _productionMenu == null
+                || _buildingPrefab == null || _buildingsRoot == null || _placementGhost == null || _inputController == null)
             {
                 Debug.LogError($"{nameof(GameBootstrap)} has unassigned references; the game cannot start.", this);
                 enabled = false;
@@ -30,9 +39,16 @@ namespace StrategyDemo.App
 
             try
             {
+                var gridMap = new GridMap(_gridConfig.Width, _gridConfig.Height);
                 _gridView.Init(_gridConfig);
                 _cameraFitter.Init(_gridView.WorldBounds);
                 _productionMenu.Init(_buildingCatalog);
+
+                var buildingFactory = new BuildingFactory(_buildingPrefab, _buildingsRoot, _gridView);
+                _placer = new BuildingPlacer(gridMap, buildingFactory);
+                _placementGhost.Init(_placer, _gridView);
+                // The fitter's camera is the one drawing the board, so it is the one that maps the pointer.
+                _inputController.Init(_cameraFitter.GetComponent<Camera>(), new PlacementInputHandler(_placer, _gridView));
             }
             catch (Exception exception)
             {
@@ -55,8 +71,8 @@ namespace StrategyDemo.App
 
         private void HandleBuildRequested(BuildingDefinition building)
         {
-            // Placeholder until placement exists (M3): makes the menu's event visible in the console.
-            Debug.Log($"Build requested: {building.DisplayName}", this);
+            // A click while already placing switches the ghost to the new building.
+            _placer.Begin(building);
         }
     }
 }
