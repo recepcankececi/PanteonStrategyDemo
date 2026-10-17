@@ -6,7 +6,8 @@ namespace StrategyDemo.Gameplay
 {
     /// <summary>
     /// Draws the building preview for a <see cref="BuildingPlacer"/> (R2): the building's sprite, plus a
-    /// translucent overlay over the cells it would cover, both tinted green (valid) or red (invalid).
+    /// translucent overlay over the cells it would cover, both tinted green (valid) or red (invalid), and for a valid
+    /// Barracks the spawn marker on the cell its soldiers will appear on.
     /// One ghost lives in the scene and is reused for every building; it never gets instantiated again.
     /// </summary>
     /// <remarks>
@@ -19,6 +20,8 @@ namespace StrategyDemo.Gameplay
         private SpriteRenderer _buildingRenderer;
         [SerializeField, Tooltip("Tiled sprite sized to the footprint; one tile per cell, pivot centred.")]
         private SpriteRenderer _footprintRenderer;
+        [SerializeField, Tooltip("Shows where a producing building's soldiers will appear; hidden for other buildings.")]
+        private SpriteRenderer _spawnMarkerRenderer;
         [SerializeField] private Color _validBuildingTint = new Color(0.7f, 1f, 0.7f, 0.85f);
         [SerializeField] private Color _invalidBuildingTint = new Color(1f, 0.5f, 0.5f, 0.85f);
         [SerializeField] private Color _validFootprintTint = new Color(0.3f, 1f, 0.3f, 0.45f);
@@ -38,7 +41,7 @@ namespace StrategyDemo.Gameplay
                 throw new InvalidOperationException($"{nameof(PlacementGhost)} on '{name}' is already initialised.");
             }
 
-            if (_buildingRenderer == null || _footprintRenderer == null)
+            if (_buildingRenderer == null || _footprintRenderer == null || _spawnMarkerRenderer == null)
             {
                 throw new InvalidOperationException($"{nameof(PlacementGhost)} on '{name}' has unassigned renderers.");
             }
@@ -63,6 +66,8 @@ namespace StrategyDemo.Gameplay
             bool visible = _placer.IsPlacing && _placer.HasCandidate;
             _buildingRenderer.enabled = visible;
             _footprintRenderer.enabled = visible;
+            // Only a valid spot has a spawn cell: an invalid one shows no promise of where soldiers would appear.
+            _spawnMarkerRenderer.enabled = visible && _placer.CandidateHasSpawnCell;
             if (!visible)
             {
                 return;
@@ -77,6 +82,11 @@ namespace StrategyDemo.Gameplay
             // The overlay shares the building's centred pivot, so sizing it to the footprint covers the area exactly.
             _footprintRenderer.size = (Vector2)footprint * GridConfig.CellWorldSize;
             _footprintRenderer.color = valid ? _validFootprintTint : _invalidFootprintTint;
+            if (_spawnMarkerRenderer.enabled)
+            {
+                // After the root has moved: the marker is its child, so setting it first would carry it along.
+                _spawnMarkerRenderer.transform.position = _gridView.CellToWorld(_placer.CandidateSpawnCell);
+            }
         }
 
         private void OnEnable()

@@ -43,7 +43,7 @@ namespace StrategyDemo.Gameplay
         public int CreatedCount => _pool.CountAll;
 
         /// <inheritdoc/>
-        public IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId)
+        public Unit Create(UnitDefinition definition, Vector2Int cell, int occupantId)
         {
             if (definition == null)
             {

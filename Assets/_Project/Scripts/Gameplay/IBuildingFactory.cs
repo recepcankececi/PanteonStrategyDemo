@@ -10,8 +10,9 @@ namespace StrategyDemo.Gameplay
     public interface IBuildingFactory
     {
         /// <summary>Creates the scene object for a building that already holds its cells in the grid.</summary>
+        /// <param name="spawnCell">Where the building's soldiers appear; null for a building that produces nothing.</param>
         /// <returns>The created building; never null.</returns>
-        IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId);
+        IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector2Int? spawnCell);
 
         /// <summary>Takes a destroyed building's scene object off the board. Its grid cells are the caller's to free.</summary>
         /// <exception cref="System.ArgumentNullException"><paramref name="building"/> is null.</exception>

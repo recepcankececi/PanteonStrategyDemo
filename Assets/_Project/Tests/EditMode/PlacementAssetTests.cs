@@ -16,11 +16,13 @@ namespace StrategyDemo.Tests.EditMode
         private const string InputActionsPath = "Assets/_Project/Settings/GameInputActions.inputactions";
         private const string BuildingPrefabPath = "Assets/_Project/Prefabs/Board/Building.prefab";
         private const string CellHighlightPath = "Assets/_Project/Art/Generated/Board/CellHighlight.png";
+        private const string SpawnMarkerPath = "Assets/_Project/Art/Generated/Board/SpawnMarker.png";
         private const string BoardGroup = "--- Board ---";
         private const string SystemsGroup = "--- Systems ---";
         private const string BuildingsContainer = "Buildings";
         private const string ObjectsLayer = "Objects";
         private const string FxLayer = "FX";
+        private const string GroundLayer = "Ground";
         private const string UnlitSpriteMaterial = "Sprite-Unlit-Default";
         private const string KeyboardMouseGroup = "Keyboard&Mouse";
 
@@ -81,6 +83,38 @@ namespace StrategyDemo.Tests.EditMode
             var renderer = building.GetComponent<SpriteRenderer>();
             Assert.That(renderer.sortingLayerName, Is.EqualTo(ObjectsLayer));
             Assert.That(renderer.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
+        }
+
+        [Test]
+        public void BuildingPrefab_HasHiddenSpawnMarkerOnTheGroundFromWorldAtlas()
+        {
+            var building = AssetDatabase.LoadAssetAtPath<Building>(BuildingPrefabPath);
+            var marker = (SpriteRenderer)new SerializedObject(building).FindProperty("_spawnMarker").objectReferenceValue;
+
+            Assert.That(marker, Is.Not.Null, "Building.Init needs a spawn marker.");
+            Assert.That(marker.name, Is.EqualTo("SpawnMarker"));
+            Assert.That(marker.transform.parent, Is.SameAs(building.transform));
+            Assert.That(AssetDatabase.GetAssetPath(marker.sprite), Is.EqualTo(SpawnMarkerPath));
+            Assert.That(marker.sortingLayerName, Is.EqualTo(GroundLayer), "Soldiers walk over it.");
+            Assert.That(marker.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
+            Assert.That(marker.enabled, Is.False, "Shown only for a building that produces soldiers.");
+        }
+
+        [Test]
+        public void Board_GhostHasSpawnMarkerAboveTheBuildingPreview()
+        {
+            PlacementGhost ghost = Root(BoardGroup).GetComponentInChildren<PlacementGhost>(true);
+            var serialized = new SerializedObject(ghost);
+            var buildingRenderer = (SpriteRenderer)serialized.FindProperty("_buildingRenderer").objectReferenceValue;
+            var marker = (SpriteRenderer)serialized.FindProperty("_spawnMarkerRenderer").objectReferenceValue;
+
+            Assert.That(marker, Is.Not.Null);
+            Assert.That(marker.name, Is.EqualTo("SpawnMarker"));
+            Assert.That(marker.transform.parent, Is.SameAs(ghost.transform));
+            Assert.That(AssetDatabase.GetAssetPath(marker.sprite), Is.EqualTo(SpawnMarkerPath));
+            Assert.That(marker.sortingLayerName, Is.EqualTo(FxLayer));
+            Assert.That(marker.sortingOrder, Is.GreaterThan(buildingRenderer.sortingOrder));
+            Assert.That(marker.sharedMaterial.name, Is.EqualTo(UnlitSpriteMaterial));
         }
 
         [Test]

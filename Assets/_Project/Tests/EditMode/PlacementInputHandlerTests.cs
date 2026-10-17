@@ -25,7 +25,7 @@ namespace StrategyDemo.Tests.EditMode
             _board = new TestBoard(Vector3.zero, 10, 8);
             _powerPlant = _board.Definition("PowerPlant", new Vector2Int(2, 2));
             _grid = new GridMap(10, 8);
-            _placer = new BuildingPlacer(_grid, new OccupantRegistry(), new NullBuildingFactory());
+            _placer = new BuildingPlacer(_grid, new OccupantRegistry(), new CellReservations(10, 8), new NullBuildingFactory());
             _handler = new PlacementInputHandler(_placer, _board.View);
         }
 

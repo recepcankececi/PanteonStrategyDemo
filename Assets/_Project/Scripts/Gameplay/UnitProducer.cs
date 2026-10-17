@@ -7,65 +7,59 @@ using UnityEngine;
 namespace StrategyDemo.Gameplay
 {
     /// <summary>
-    /// Produces soldiers from a building (R3, R5, R6, R7): instantly and without limit, at the building's spawn
-    /// cell, or at the nearest free cell when that one is off the board or taken. Pure C#, tested without a scene.
+    /// Produces soldiers from a building (R3, R5, R6, R7): instantly and without limit, always on the building's spawn
+    /// cell, from where the new soldier walks to the nearest free cell so the spawn cell clears for the next one.
+    /// Pure C# apart from the soldier object itself, tested without a scene.
     /// </summary>
     /// <remarks>
-    /// The fallback search never crosses another building, so a soldier is never put in a pocket walled off from its
-    /// producer, where it could never walk out. Soldiers hold their cell in the <see cref="GridMap"/> like buildings
-    /// do, so a building can never be placed on a soldier and selection finds a soldier the same way it finds a
-    /// building. A new soldier also reserves its cell (<see cref="CellReservations"/>) and never appears on a
-    /// cell another soldier is walking to, so two soldiers never end up on one cell.
+    /// The spawn cell is chosen when the building is placed (<see cref="BuildingPlacer"/>) and reserved by it for life,
+    /// so no soldier ever stops there and no building is ever placed on it. Production is refused while no soldier on
+    /// the spawn cell could reach a free cell (the board is full, or the Barracks is walled in): the soldier would have
+    /// nowhere to stand. Soldiers hold their cell in the <see cref="GridMap"/> like buildings do, so a building can never
+    /// be placed on a soldier and selection finds a soldier the same way it finds a building.
     /// </remarks>
     public sealed class UnitProducer
     {
         private readonly GridMap _grid;
         private readonly OccupantRegistry _occupants;
-        private readonly CellReservations _reservations;
         private readonly IUnitFactory _factory;
-        private readonly FreeCellSearch _freeCellSearch;
-        // Cached once: a method group converted to a delegate on every call would allocate.
-        private readonly Predicate<int> _canSpawnSearchPassThrough;
-        private readonly Predicate<Vector2Int> _isFreeSpawnCell;
-        // Grid id of the building producing right now; the spawn search may spread through its own cells.
-        private int _producerId;
+        private readonly UnitMovement _movement;
 
-        /// <param name="grid">Board occupancy; the new soldier occupies its spawn cell.</param>
+        /// <param name="grid">Board occupancy; the new soldier occupies the spawn cell when it is free.</param>
         /// <param name="occupants">Registry that hands out ids and records the soldier.</param>
-        /// <param name="reservations">The spawn cell is reserved as the soldier's stop cell.</param>
         /// <param name="factory">Creates (or reuses) the soldier object.</param>
+        /// <param name="movement">Walks the new soldier off the spawn cell.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-        public UnitProducer(GridMap grid, OccupantRegistry occupants, CellReservations reservations, IUnitFactory factory)
+        public UnitProducer(GridMap grid, OccupantRegistry occupants, IUnitFactory factory, UnitMovement movement)
         {
             _grid = grid ?? throw new ArgumentNullException(nameof(grid));
             _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
-            _reservations = reservations ?? throw new ArgumentNullException(nameof(reservations));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            _freeCellSearch = new FreeCellSearch(grid);
-            _canSpawnSearchPassThrough = CanSpawnSearchPassThrough;
-            _isFreeSpawnCell = IsFreeSpawnCell;
+            _movement = movement ?? throw new ArgumentNullException(nameof(movement));
         }
 
         /// <summary>
-        /// Wanted spawn cell of a building whose bottom-left cell is <paramref name="producerOrigin"/>; may be off the board.
+        /// True when <paramref name="producer"/> can produce a soldier now: it has a spawn cell and a soldier there could
+        /// walk to a free cell. The information panel disables its production buttons while this is false.
         /// </summary>
-        public static Vector2Int SpawnCellOf(BuildingDefinition producer, Vector2Int producerOrigin)
+        /// <exception cref="ArgumentNullException"><paramref name="producer"/> is null.</exception>
+        public bool CanProduce(Building producer)
         {
             if (producer == null)
             {
                 throw new ArgumentNullException(nameof(producer));
             }
 
-            return producerOrigin + producer.SpawnOffset;
+            return producer.HasSpawnCell && _movement.HasStopCellNear(producer.SpawnCell);
         }
 
-        /// <summary>Produces one <paramref name="unit"/> from the building <paramref name="producer"/> standing at <paramref name="producerOrigin"/>.</summary>
-        /// <param name="producedAt">Cell the soldier stands on; meaningful only when the method returns true.</param>
-        /// <returns>False when the board has no free cell left; nothing changes then.</returns>
+        /// <summary>Produces one <paramref name="unit"/> on the spawn cell of <paramref name="producer"/>.</summary>
+        /// <param name="produced">The new soldier; null when the method returns false.</param>
+        /// <returns>False when <see cref="CanProduce"/> is false; nothing changes then.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="producer"/> or <paramref name="unit"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="producer"/> cannot produce <paramref name="unit"/> (R5).</exception>
         /// <remarks>If the factory throws, the cell is given back and the exception is passed on.</remarks>
-        public bool TryProduce(BuildingDefinition producer, Vector2Int producerOrigin, UnitDefinition unit, out Vector2Int producedAt)
+        public bool TryProduce(Building producer, UnitDefinition unit, out Unit produced)
         {
             if (producer == null)
             {
@@ -78,48 +72,49 @@ namespace StrategyDemo.Gameplay
             }
 
             // The UI only offers what the building lists, so this guards the rule itself (R5: Power Plant produces nothing).
-            if (!Contains(producer.ProducibleUnits, unit))
+            if (!Contains(producer.Definition.ProducibleUnits, unit))
             {
-                throw new ArgumentException($"'{producer.name}' cannot produce '{unit.name}'.", nameof(unit));
+                throw new ArgumentException($"'{producer.Definition.name}' cannot produce '{unit.name}'.", nameof(unit));
             }
 
-            // The producer's cells are passable so a taken or off-board spawn cell still leads around the building.
-            _producerId = _grid.IsInside(producerOrigin) ? _grid.GetOccupant(producerOrigin) : GridMap.EmptyId;
-            if (!_freeCellSearch.TryFindNearest(SpawnCellOf(producer, producerOrigin), _canSpawnSearchPassThrough, _isFreeSpawnCell, out producedAt))
+            produced = null;
+            if (!CanProduce(producer))
             {
                 return false;
             }
 
+            Vector2Int spawnCell = producer.SpawnCell;
             int occupantId = _occupants.NextId();
-            // Grid first, as with buildings: if the soldier cannot be created, give the cell back.
-            _grid.Occupy(producedAt, Vector2Int.one, occupantId);
+            // The previous soldier may still be walking out of the spawn cell. Then the new one holds no grid cell until
+            // that one has left (movement takes the cell for it), exactly like two soldiers passing through one cell.
+            bool holdsCell = _grid.GetOccupant(spawnCell) == GridMap.EmptyId;
+            if (holdsCell)
+            {
+                // Grid first, as with buildings: if the soldier cannot be created, give the cell back. Occupy raises
+                // AreaChanged before the soldier is registered; listeners see an unknown id on a cell that is already
+                // the Barracks' reservation, so nothing can be placed there either way.
+                _grid.Occupy(spawnCell, Vector2Int.one, occupantId);
+            }
+
             try
             {
-                _occupants.Add(_factory.Create(unit, producedAt, occupantId));
+                produced = _factory.Create(unit, spawnCell, occupantId);
+                _occupants.Add(produced);
             }
             catch
             {
-                _grid.Release(producedAt, Vector2Int.one, occupantId);
+                if (holdsCell)
+                {
+                    _grid.Release(spawnCell, Vector2Int.one, occupantId);
+                }
+
+                produced = null;
                 throw;
             }
 
-            // A standing soldier reserves the cell it stands on.
-            _reservations.Reserve(producedAt, occupantId);
-
+            // The spawn cell is the building's reservation, so the nearest cell the soldier may stop on is elsewhere.
+            _movement.StepAside(produced);
             return true;
-        }
-
-        private bool IsFreeSpawnCell(Vector2Int cell)
-        {
-            // Empty now and not the destination of a soldier on its way there.
-            return _grid.GetOccupant(cell) == GridMap.EmptyId && _reservations.OwnerOf(cell) == GridMap.EmptyId;
-        }
-
-        private bool CanSpawnSearchPassThrough(int occupantId)
-        {
-            // The producer itself, or a soldier who can walk aside; any other building is a wall.
-            return occupantId == _producerId
-                || (_occupants.TryGet(occupantId, out IBoardOccupant occupant) && occupant.IsMobile);
         }
 
         private static bool Contains(IReadOnlyList<UnitDefinition> units, UnitDefinition unit)

@@ -22,6 +22,10 @@ namespace StrategyDemo.Tests.EditMode
         private BuildingPlacer _placer;
         private BuildingDefinition _barracks;
         private BuildingDefinition _powerPlant;
+        // A 3×3 building that produces a soldier, so it needs a spawn cell like the shipped Barracks.
+        private BuildingDefinition _producer;
+        private UnitDefinition _soldier;
+        private CellReservations _reservations;
         private int _changedCount;
 
         [SetUp]
@@ -29,12 +33,15 @@ namespace StrategyDemo.Tests.EditMode
         {
             _grid = new GridMap(Width, Height);
             _occupants = new OccupantRegistry();
+            _reservations = new CellReservations(Width, Height);
             _factory = new RecordingFactory();
-            _placer = new BuildingPlacer(_grid, _occupants, _factory);
+            _placer = new BuildingPlacer(_grid, _occupants, _reservations, _factory);
             _placer.Changed += () => _changedCount++;
             _changedCount = 0;
             _barracks = Definition(new Vector2Int(3, 2));
             _powerPlant = Definition(new Vector2Int(2, 2));
+            _soldier = ScriptableObject.CreateInstance<UnitDefinition>();
+            _producer = Definition(new Vector2Int(3, 3), _soldier);
         }
 
         [TearDown]
@@ -42,14 +49,17 @@ namespace StrategyDemo.Tests.EditMode
         {
             Object.DestroyImmediate(_barracks);
             Object.DestroyImmediate(_powerPlant);
+            Object.DestroyImmediate(_producer);
+            Object.DestroyImmediate(_soldier);
         }
 
         [Test]
         public void Constructor_NullArgument_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(null, _occupants, _factory));
-            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, null, _factory));
-            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, _occupants, null));
+            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(null, _occupants, _reservations, _factory));
+            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, null, _reservations, _factory));
+            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, _occupants, _reservations, null));
+            Assert.Throws<ArgumentNullException>(() => new BuildingPlacer(_grid, _occupants, null, _factory));
         }
 
         [Test]
@@ -223,7 +233,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void TryPlace_FactoryThrows_GivesCellsBackAndRethrows()
         {
-            var placer = new BuildingPlacer(_grid, _occupants, new ThrowingFactory());
+            var placer = new BuildingPlacer(_grid, _occupants, _reservations, new ThrowingFactory());
             placer.Begin(_barracks);
             placer.MoveTo(new Vector2Int(2, 2));
 
@@ -345,13 +355,265 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_placer.TryPlace(keepPlacing: false), Is.True, "Test setup could not place a building.");
         }
 
-        private static BuildingDefinition Definition(Vector2Int footprint)
+        private static BuildingDefinition Definition(Vector2Int footprint, UnitDefinition producible = null)
         {
             var definition = ScriptableObject.CreateInstance<BuildingDefinition>();
             var serialized = new SerializedObject(definition);
             serialized.FindProperty("_footprint").vector2IntValue = footprint;
+            if (producible != null)
+            {
+                SerializedProperty units = serialized.FindProperty("_producibleUnits");
+                units.arraySize = 1;
+                units.GetArrayElementAtIndex(0).objectReferenceValue = producible;
+            }
+
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return definition;
+        }
+
+        /// <summary>A building that is not placed through the placer, e.g. one walling off a spawn side.</summary>
+        private void Wall(Vector2Int origin, Vector2Int size)
+        {
+            int id = _occupants.NextId();
+            _grid.Occupy(origin, size, id);
+            _occupants.Add(new FakeOccupant(id, origin, size));
+        }
+
+        /// <summary>A soldier standing on <paramref name="cell"/>: it holds the grid cell and reserves it as its stop cell.</summary>
+        private int StandingSoldier(Vector2Int cell)
+        {
+            int id = WalkingSoldier(cell);
+            _reservations.Reserve(cell, id);
+            return id;
+        }
+
+        /// <summary>A soldier walking through <paramref name="cell"/>: it holds the grid cell, its stop cell is elsewhere.</summary>
+        private int WalkingSoldier(Vector2Int cell)
+        {
+            int id = _occupants.NextId();
+            _grid.Occupy(cell, Vector2Int.one, id);
+            _occupants.Add(new FakeOccupant(id, cell, Vector2Int.one, isMobile: true));
+            return id;
+        }
+
+        [Test]
+        public void MoveTo_ProducerInOpenField_TakesCellBelowBottomMiddle()
+        {
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            Assert.That(_placer.IsCandidateValid, Is.True);
+            Assert.That(_placer.CandidateHasSpawnCell, Is.True);
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(4, 2)));
+        }
+
+        [Test]
+        public void MoveTo_ProducerOnBottomEdge_TakesRightSide()
+        {
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(3, 0));
+
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(6, 1)));
+        }
+
+        [Test]
+        public void MoveTo_ProducerInBottomRightCorner_TakesTopSide()
+        {
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(Width - 3, 0));
+
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(Width - 2, 3)));
+        }
+
+        [Test]
+        public void MoveTo_ProducerWithOnlyLeftSideOpen_TakesLeftSide()
+        {
+            // Top-right corner: bottom side walled off, right and top off the board.
+            Wall(new Vector2Int(Width - 2, Height - 4), Vector2Int.one);
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(Width - 3, Height - 3));
+
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(Width - 4, Height - 2)));
+        }
+
+        [Test]
+        public void MoveTo_ProducerWithNoUsableSide_IsInvalid()
+        {
+            // Bottom-left corner: bottom and left off the board, right and top walled off.
+            Wall(new Vector2Int(3, 1), Vector2Int.one);
+            Wall(new Vector2Int(1, 3), Vector2Int.one);
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(Vector2Int.zero);
+
+            Assert.That(_placer.IsCandidateValid, Is.False, "A Barracks whose soldiers could never appear must not be placed.");
+            Assert.That(_placer.CandidateHasSpawnCell, Is.False);
+            Assert.That(_placer.TryPlace(keepPlacing: false), Is.False);
+        }
+
+        [Test]
+        public void MoveTo_ProducerSpawnSideIsStandingSoldiersCell_SkipsThatSide()
+        {
+            StandingSoldier(new Vector2Int(4, 2));
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(6, 4)), "Reserved by a soldier: the right side is next.");
+        }
+
+        [Test]
+        public void MoveTo_ProducerSpawnSideHasSoldierWalkingThrough_KeepsThatSide()
+        {
+            // The soldier holds the cell only while passing; it stops elsewhere, so the cell stays usable.
+            WalkingSoldier(new Vector2Int(4, 2));
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(4, 2)));
+        }
+
+        [Test]
+        public void MoveTo_NonProducer_HasNoSpawnCell()
+        {
+            _placer.Begin(_powerPlant);
+
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            Assert.That(_placer.IsCandidateValid, Is.True);
+            Assert.That(_placer.CandidateHasSpawnCell, Is.False);
+        }
+
+        [Test]
+        public void MoveTo_NonProducerAgainstWalls_NeedsNoSpawnSide()
+        {
+            // The same corner that makes a producer invalid is fine for a building that produces nothing.
+            Wall(new Vector2Int(2, 0), Vector2Int.one);
+            Wall(new Vector2Int(0, 2), Vector2Int.one);
+            _placer.Begin(_powerPlant);
+
+            _placer.MoveTo(Vector2Int.zero);
+
+            Assert.That(_placer.IsCandidateValid, Is.True);
+        }
+
+        [Test]
+        public void MoveTo_FootprintOverAnotherProducersSpawnCell_IsInvalid()
+        {
+            PlaceAt(_producer, new Vector2Int(3, 3));
+            _placer.Begin(_powerPlant);
+
+            // The power plant (4..5, 1..2) would cover the Barracks' spawn cell (4, 2).
+            _placer.MoveTo(new Vector2Int(4, 1));
+
+            Assert.That(_placer.IsCandidateValid, Is.False);
+        }
+
+        [Test]
+        public void MoveTo_FootprintOverSoldiersStopCell_IsValid()
+        {
+            // A soldier still walking to an empty cell: building there is allowed, the soldier plans a new stop cell.
+            int soldier = _occupants.NextId();
+            _occupants.Add(new FakeOccupant(soldier, new Vector2Int(9, 9), Vector2Int.one, isMobile: true));
+            _reservations.Reserve(new Vector2Int(4, 1), soldier);
+            _placer.Begin(_powerPlant);
+
+            _placer.MoveTo(new Vector2Int(4, 1));
+
+            Assert.That(_placer.IsCandidateValid, Is.True);
+        }
+
+        [Test]
+        public void MoveTo_ProducerWhoseSpawnSideIsAnotherProducersSpawnCell_SkipsThatSide()
+        {
+            // Another Barracks owns (4, 2) as its spawn cell: a reservation held by a building, not a soldier.
+            int otherBarracks = _occupants.NextId();
+            _occupants.Add(new FakeOccupant(otherBarracks, new Vector2Int(5, 0), new Vector2Int(3, 1)));
+            _reservations.Reserve(new Vector2Int(4, 2), otherBarracks);
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(6, 4)), "Two buildings never share a spawn cell.");
+        }
+
+        [Test]
+        public void TryPlace_Producer_ReservesSpawnCellForTheBuildingAndHandsItToTheFactory()
+        {
+            PlaceAt(_producer, new Vector2Int(3, 3));
+
+            int id = _grid.GetOccupant(new Vector2Int(3, 3));
+            Assert.That(_reservations.OwnerOf(new Vector2Int(4, 2)), Is.EqualTo(id));
+            Assert.That(_factory.SpawnCells[0], Is.EqualTo(new Vector2Int(4, 2)));
+            Assert.That(_grid.GetOccupant(new Vector2Int(4, 2)), Is.EqualTo(GridMap.EmptyId), "Soldiers still walk through it.");
+        }
+
+        [Test]
+        public void TryPlace_NonProducer_ReservesNothing()
+        {
+            PlaceAt(_powerPlant, new Vector2Int(3, 3));
+
+            Assert.That(_reservations.Count, Is.Zero);
+            Assert.That(_factory.SpawnCells[0], Is.Null);
+        }
+
+        [Test]
+        public void TryPlace_SpawnCellReservedWhilePointerStill_TakesNextSide()
+        {
+            // No grid event: a soldier merely reserves the chosen spawn cell. The click evaluates the spot again.
+            _placer.Begin(_producer);
+            _placer.MoveTo(new Vector2Int(3, 3));
+            int soldier = _occupants.NextId();
+            _occupants.Add(new FakeOccupant(soldier, new Vector2Int(9, 7), Vector2Int.one, isMobile: true));
+            _reservations.Reserve(new Vector2Int(4, 2), soldier);
+
+            Assert.That(_placer.TryPlace(keepPlacing: false), Is.True);
+            Assert.That(_factory.SpawnCells[0], Is.EqualTo(new Vector2Int(6, 4)));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TryPlace_Producer_NotifiesExactlyOnce(bool keepPlacing)
+        {
+            // Occupy raises a grid event mid-placement; the placer must not re-evaluate and notify halfway through.
+            _placer.Begin(_producer);
+            _placer.MoveTo(new Vector2Int(3, 3));
+            _changedCount = 0;
+
+            _placer.TryPlace(keepPlacing);
+
+            Assert.That(_changedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TryPlace_ProducerFactoryThrows_ReservesNothing()
+        {
+            var placer = new BuildingPlacer(_grid, _occupants, _reservations, new ThrowingFactory());
+            placer.Begin(_producer);
+            placer.MoveTo(new Vector2Int(3, 3));
+
+            // The spawn cell is reserved before the scene object is created, so this also proves the reservation rollback.
+            Assert.Throws<InvalidOperationException>(() => placer.TryPlace(keepPlacing: false));
+            Assert.That(_reservations.Count, Is.Zero);
+            Assert.That(_grid.IsAreaFree(new Vector2Int(3, 3), _producer.Footprint), Is.True);
+        }
+
+        [Test]
+        public void GridChangedOnSpawnSideUnderStillPreview_MovesSpawnCellAndNotifies()
+        {
+            _placer.Begin(_producer);
+            _placer.MoveTo(new Vector2Int(3, 3));
+            _changedCount = 0;
+
+            Wall(new Vector2Int(4, 2), Vector2Int.one);
+
+            Assert.That(_placer.CandidateSpawnCell, Is.EqualTo(new Vector2Int(6, 4)));
+            Assert.That(_changedCount, Is.EqualTo(1));
         }
 
         [Test]
@@ -393,7 +655,7 @@ namespace StrategyDemo.Tests.EditMode
 
         private sealed class ThrowingFactory : IBuildingFactory
         {
-            public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
+            public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector2Int? spawnCell)
             {
                 throw new InvalidOperationException("Simulated failure while creating the scene object.");
             }
@@ -409,9 +671,12 @@ namespace StrategyDemo.Tests.EditMode
             public List<(BuildingDefinition Definition, Vector2Int Origin, int OccupantId)> Created { get; } =
                 new List<(BuildingDefinition, Vector2Int, int)>();
 
-            public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
+            public List<Vector2Int?> SpawnCells { get; } = new List<Vector2Int?>();
+
+            public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector2Int? spawnCell)
             {
                 Created.Add((definition, origin, occupantId));
+                SpawnCells.Add(spawnCell);
                 return new FakeOccupant(occupantId, origin, definition.Footprint);
             }
 

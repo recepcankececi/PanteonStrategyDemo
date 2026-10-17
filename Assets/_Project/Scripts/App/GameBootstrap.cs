@@ -62,16 +62,16 @@ namespace StrategyDemo.App
 
                 // One registry for buildings and soldiers: both hold grid cells, and a clicked cell must lead to either.
                 var occupants = new OccupantRegistry();
+                // Cells nobody else may stop on: every soldier's stop cell and every Barracks' spawn cell.
+                var reservations = new CellReservations(_gridConfig.Width, _gridConfig.Height);
                 var buildingFactory = new BuildingFactory(_buildingPrefab, _buildingsRoot, _buildingPoolRoot, _gridView);
-                _placer = new BuildingPlacer(gridMap, occupants, buildingFactory);
+                _placer = new BuildingPlacer(gridMap, occupants, reservations, buildingFactory);
                 _placementGhost.Init(_placer, _gridView);
 
-                // Where every soldier will stand: shared by production (spawn cells) and movement (stop cells).
-                var reservations = new CellReservations(_gridConfig.Width, _gridConfig.Height);
-                var unitFactory = new UnitFactory(_unitPrefab, _unitsRoot, _unitPoolRoot, _gridView);
-                var unitProducer = new UnitProducer(gridMap, occupants, reservations, unitFactory);
                 var movement = new UnitMovement(gridMap, occupants, reservations, _gridView);
                 _movementDriver.Init(movement);
+                var unitFactory = new UnitFactory(_unitPrefab, _unitsRoot, _unitPoolRoot, _gridView);
+                var unitProducer = new UnitProducer(gridMap, occupants, unitFactory, movement);
 
                 var selection = new SelectionService(gridMap, occupants);
                 var selectionInput = new SelectionInputHandler(selection, _gridView);
@@ -80,7 +80,7 @@ namespace StrategyDemo.App
                 _infoPanel.Init(selection, unitProducer);
 
                 // The one remove path for whatever dies; combat deals the damage and calls it (R9, R10).
-                var despawner = new OccupantDespawner(gridMap, occupants, movement, selection);
+                var despawner = new OccupantDespawner(gridMap, occupants, reservations, movement, selection);
                 var combat = new UnitCombat(movement, new FreeForAllAttackRule(), despawner);
                 _combatDriver.Init(combat);
                 _combatEffects.Init(combat, despawner);

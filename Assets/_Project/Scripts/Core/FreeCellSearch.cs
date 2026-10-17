@@ -5,20 +5,20 @@ using UnityEngine;
 namespace StrategyDemo.Core
 {
     /// <summary>
-    /// Finds the free cell closest to a wanted cell with a breadth-first search (BFS), e.g. where a produced
-    /// soldier appears when its building's spawn cell is off the board or taken, or where each soldier of a group
-    /// stops around a move target. The caller decides what "free" means.
+    /// Finds the free cell closest to a wanted cell with a breadth-first search (BFS), e.g. where each soldier of a
+    /// group stops around a move target, or where a new soldier walks to from its Barracks' spawn cell. The caller
+    /// decides what "free" means.
     /// </summary>
     /// <remarks>
     /// BFS visits cells ring by ring (every cell 1 step away, then every cell 2 steps away, ...), so the first
     /// free cell it meets is one of the nearest in 4-neighbour steps. The search only spreads through occupied
-    /// cells the caller allows (e.g. the producing building and soldiers, who can walk away), never through other
-    /// buildings: a soldier is never placed in a pocket walled off from its building. Buffers are reused between
-    /// searches, so a search allocates nothing once the instance exists.
+    /// cells the caller allows (e.g. soldiers, who can walk away), never through buildings: the cell it finds is
+    /// always one a soldier can walk to. Buffers are reused between searches, so a search allocates nothing once the
+    /// instance exists.
     /// </remarks>
     public sealed class FreeCellSearch
     {
-        // Down first: the spawn cell sits below its building, so a tie prefers staying below it.
+        // A fixed order makes ties deterministic (same board, same answer); down first is an arbitrary but stable choice.
         private static readonly Vector2Int[] NeighbourSteps =
         {
             Vector2Int.down, Vector2Int.left, Vector2Int.right, Vector2Int.up
@@ -40,7 +40,7 @@ namespace StrategyDemo.Core
 
         /// <summary>
         /// Finds the free cell nearest to <paramref name="wanted"/>. A wanted cell off the board is first clamped
-        /// to the nearest board cell, so a building on the bottom edge still spawns right next to itself.
+        /// to the nearest board cell, so the search always starts on the board.
         /// </summary>
         /// <param name="wanted">Preferred cell; returned as is when it is on the board and free.</param>
         /// <param name="canPassThrough">

@@ -17,7 +17,7 @@ Unity applies the import settings by folder (`StrategyDemo.EditorTools.Generated
 | `src/svg.js` | SVG string helpers and `CELL` (64 px per grid cell) |
 | `src/buildings.js` | six buildings; each canvas is exactly its footprint |
 | `src/units.js` | Assault, Rifleman, Scout; facing up, inside the cell's inscribed circle |
-| `src/board.js` | ground tile, board edge, white cell highlight, health bar strip |
+| `src/board.js` | ground tile, board edge, white cell highlight, health bar strip, Barracks spawn marker, tracer, destruction burst |
 | `src/ui.js` | 9-slice panel, row and button (16 px border) |
 
 `generate.js` refuses to write a sprite whose rendered size is not its footprint × 64 px, or a soldier with a

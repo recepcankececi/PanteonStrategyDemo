@@ -35,10 +35,20 @@ namespace StrategyDemo.UI
             _damageLabel.SetText("Damage {0}", unit.Damage);
         }
 
+        /// <summary>False while the row is disabled (e.g. no free cell for a new soldier).</summary>
+        public bool IsInteractable => _button.interactable;
+
+        /// <summary>Enables or disables the button; a disabled row ignores clicks and draws greyed out.</summary>
+        public void SetInteractable(bool interactable)
+        {
+            _button.interactable = interactable;
+        }
+
         /// <summary>Clears the shown data and every <see cref="Clicked"/> subscriber, so a reused row cannot call a previous owner.</summary>
         public void ResetState()
         {
             Clicked = null;
+            _button.interactable = true;
             Unit = null;
             _icon.sprite = null;
             _icon.enabled = false;
@@ -59,7 +69,8 @@ namespace StrategyDemo.UI
         /// <summary>Button callback; internal so EditMode tests can click without an EventSystem.</summary>
         internal void HandleClick()
         {
-            if (Unit != null)
+            // A disabled button sends no click, but a direct call (tests, future input paths) must respect it too.
+            if (Unit != null && _button.interactable)
             {
                 Clicked?.Invoke(Unit);
             }

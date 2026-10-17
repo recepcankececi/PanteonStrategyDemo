@@ -16,10 +16,11 @@ MonoBehaviour:
   _sprite: {fileID: 21300000, guid: 33de10d1cad899647b1f8d0a39d50253, type: 3}
   _maxHealth: 10
   _damage: 5
-  _attackRange: 1
+  _attackRange: 3
   _attackInterval: 1
   _moveSpeed: 3
   _walkFrames:
   - {fileID: 21300000, guid: 930903bbe3840ba4786844ed74cb7d08, type: 3}
   - {fileID: 21300000, guid: a8d21616d0bb20441b804ebd821e8a65, type: 3}
   _walkFramesPerSecond: 6
+  _firesTracer: 1

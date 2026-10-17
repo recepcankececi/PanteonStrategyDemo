@@ -29,6 +29,8 @@ namespace StrategyDemo.Tests.EditMode
         private OccupantRegistry _registry;
         private SelectionService _selection;
         private UnitProducer _producer;
+        private CellReservations _reservations;
+        private TestUnitFactory _factory;
         private InfoPanel _panel;
         private GameObject _emptyState;
         private GameObject _details;
@@ -50,13 +52,16 @@ namespace StrategyDemo.Tests.EditMode
             _scene = EditorSceneManager.NewPreviewScene();
             _board = new TestBoard(Vector3.zero, 10, 8);
             _soldiers = new[] { _board.Unit("Soldier1", 10), _board.Unit("Soldier2", 5), _board.Unit("Soldier3", 2) };
-            _barracks = _board.Producer("Barracks", new Vector2Int(3, 2), new Vector2Int(1, -1), _soldiers);
+            _barracks = _board.Producer("Barracks", new Vector2Int(3, 2), _soldiers);
             _powerPlant = _board.Definition("PowerPlant", new Vector2Int(2, 2));
 
             _grid = new GridMap(10, 8);
             _registry = new OccupantRegistry();
             _selection = new SelectionService(_grid, _registry);
-            _producer = new UnitProducer(_grid, _registry, new CellReservations(10, 8), new FakeUnitFactory());
+            _reservations = new CellReservations(10, 8);
+            _factory = new TestUnitFactory(_board);
+            var movement = new UnitMovement(_grid, _registry, _reservations, _board.View);
+            _producer = new UnitProducer(_grid, _registry, _factory, movement);
 
             var root = new GameObject("InformationPanel", typeof(RectTransform));
             SceneManager.MoveGameObjectToScene(root, _scene);
@@ -92,6 +97,7 @@ namespace StrategyDemo.Tests.EditMode
         public void DestroyPanel()
         {
             EditorSceneManager.ClosePreviewScene(_scene);
+            _factory.Dispose();
             _board.Dispose();
         }
 
@@ -191,7 +197,7 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_registry.Count, Is.EqualTo(before + 1));
             int id = _grid.GetOccupant(new Vector2Int(4, 2));
             Assert.That(_registry.TryGet(id, out IBoardOccupant produced), Is.True);
-            Assert.That(((FakeUnit)produced).Definition, Is.SameAs(_soldiers[2]));
+            Assert.That(((Unit)produced).Definition, Is.SameAs(_soldiers[2]));
             Assert.That(_statusLabel.text, Is.Empty);
             Assert.That(_selection.Selected, Is.InstanceOf<Building>(), "Producing keeps the Barracks selected.");
         }
@@ -207,6 +213,102 @@ namespace StrategyDemo.Tests.EditMode
 
             Assert.That(_registry.Count, Is.EqualTo(before));
             Assert.That(_statusLabel.text, Is.Not.Empty);
+        }
+
+        [Test]
+        public void Refresh_BarracksOnFullBoard_DisablesRowsAndShowsMessage()
+        {
+            Building barracks = SelectBuilding(_barracks, new Vector2Int(3, 3));
+            FillEveryFreeCell();
+
+            _selection.Clear();
+            _selection.SelectAt(barracks.Origin);
+            _panel.Refresh();
+
+            Assert.That(_panel.Rows.Select(row => row.IsInteractable), Is.All.False);
+            Assert.That(_statusLabel.text, Is.Not.Empty);
+        }
+
+        [Test]
+        public void FollowProductionAvailability_BoardFillsWhileSelected_DisablesRows()
+        {
+            SelectBuilding(_barracks, new Vector2Int(3, 3));
+            Assert.That(_panel.Rows.Select(row => row.IsInteractable), Is.All.True);
+
+            FillEveryFreeCell();
+            _panel.FollowProductionAvailability();
+
+            Assert.That(_panel.Rows.Select(row => row.IsInteractable), Is.All.False);
+            Assert.That(_statusLabel.text, Is.Not.Empty);
+        }
+
+        [Test]
+        public void FollowProductionAvailability_CellFreesUp_EnablesRowsAndClearsMessage()
+        {
+            SelectBuilding(_barracks, new Vector2Int(3, 3));
+            FillEveryFreeCell();
+            _panel.FollowProductionAvailability();
+
+            var freed = new Vector2Int(4, 1);
+            _grid.Release(freed, Vector2Int.one, _grid.GetOccupant(freed));
+            _panel.FollowProductionAvailability();
+
+            Assert.That(_panel.Rows.Select(row => row.IsInteractable), Is.All.True);
+            Assert.That(_statusLabel.text, Is.Empty);
+        }
+
+        [Test]
+        public void ClickingDisabledRow_ProducesNothing()
+        {
+            SelectBuilding(_barracks, new Vector2Int(3, 3));
+            FillEveryFreeCell();
+            _panel.FollowProductionAvailability();
+            int before = _registry.Count;
+
+            _panel.Rows[0].HandleClick();
+
+            Assert.That(_registry.Count, Is.EqualTo(before));
+        }
+
+        [Test]
+        public void Refresh_RowsOfDisabledBarracksReleased_GoBackToPoolEnabled()
+        {
+            // Pooled rows must not carry the disabled state into the next building they show.
+            SelectBuilding(_barracks, new Vector2Int(3, 3));
+            FillEveryFreeCell();
+            _panel.FollowProductionAvailability();
+
+            _selection.Clear();
+            _panel.Refresh();
+
+            Assert.That(_unitList.GetComponentsInChildren<UnitProductionItemView>(true).Select(row => row.IsInteractable), Is.All.True);
+        }
+
+        [Test]
+        public void ClickingSoldierRow_SoldierStepsOffTheSpawnCell()
+        {
+            SelectBuilding(_barracks, new Vector2Int(3, 3));
+
+            _panel.Rows[0].HandleClick();
+
+            Assert.That(_reservations.OwnerOf(new Vector2Int(4, 1)), Is.Not.EqualTo(GridMap.EmptyId),
+                "The new soldier has reserved the free cell below the spawn cell and is walking there.");
+        }
+
+        [Test]
+        public void FollowProductionAvailability_EveryFrameWhileBarracksSelected_AllocatesNothing()
+        {
+            // Polled from Update: the availability search must not allocate, whether the answer is yes or no.
+            SelectBuilding(_barracks, new Vector2Int(3, 3));
+            _panel.FollowProductionAvailability();
+
+            AllocationAssert.None(() =>
+            {
+                for (int i = 0; i < 50; i++)
+                {
+                    _panel.FollowProductionAvailability();
+                }
+            });
         }
 
         [Test]
@@ -294,7 +396,14 @@ namespace StrategyDemo.Tests.EditMode
             Building building = TestBoard.CreateBuildingObject(definition.name);
             SceneManager.MoveGameObjectToScene(building.gameObject, _scene);
             int id = _registry.NextId();
-            building.Init(definition, origin, id, Vector3.zero);
+            // A producer gets its bottom-middle spawn cell and reserves it, as BuildingPlacer does on a free board.
+            Vector2Int? spawnCell = definition.CanProduceUnits ? SpawnSides.Candidate(origin, definition.Footprint, 0) : (Vector2Int?)null;
+            building.Init(definition, origin, id, Vector3.zero, null, spawnCell);
+            if (spawnCell.HasValue)
+            {
+                _reservations.Reserve(spawnCell.Value, id);
+            }
+
             _grid.Occupy(origin, definition.Footprint, id);
             _registry.Add(building);
             _selection.SelectAt(origin);
@@ -353,41 +462,6 @@ namespace StrategyDemo.Tests.EditMode
         private static TMP_Text Label(string name, Transform parent)
         {
             return Child(name, parent).gameObject.AddComponent<TextMeshProUGUI>();
-        }
-
-        /// <summary>A soldier without a GameObject that remembers its type.</summary>
-        private sealed class FakeUnit : IBoardOccupant
-        {
-            public FakeUnit(UnitDefinition definition, int occupantId, Vector2Int cell)
-            {
-                Definition = definition;
-                OccupantId = occupantId;
-                Origin = cell;
-            }
-
-            public UnitDefinition Definition { get; }
-
-            public int OccupantId { get; }
-
-            public Vector2Int Origin { get; }
-
-            public Vector2Int Footprint => Vector2Int.one;
-
-            public bool IsMobile => true;
-
-            public Vector3 WorldCenter => Vector3.zero;
-        }
-
-        private sealed class FakeUnitFactory : IUnitFactory
-        {
-            public IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId)
-            {
-                return new FakeUnit(definition, occupantId, cell);
-            }
-
-            public void Release(Unit unit)
-            {
-            }
         }
     }
 }

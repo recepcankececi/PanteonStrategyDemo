@@ -43,7 +43,7 @@ namespace StrategyDemo.Gameplay
         public int CreatedCount => _pool.CountAll;
 
         /// <inheritdoc/>
-        public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
+        public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector2Int? spawnCell)
         {
             if (definition == null)
             {
@@ -53,7 +53,7 @@ namespace StrategyDemo.Gameplay
             Building building = _pool.Get();
             try
             {
-                building.Init(definition, origin, occupantId, _gridView.FootprintCenter(origin, definition.Footprint), this);
+                building.Init(definition, origin, occupantId, _gridView.FootprintCenter(origin, definition.Footprint), this, spawnCell);
             }
             catch
             {

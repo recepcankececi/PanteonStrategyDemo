@@ -20,4 +20,3 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e4634a3a685e42b4f80435b1c56ab585, type: 2}
   - {fileID: 11400000, guid: a0d203b85e08c4b4980068d2540c749e, type: 2}
   - {fileID: 11400000, guid: a61c9a4807226fb409ca940b537163df, type: 2}
-  _spawnOffset: {x: 1, y: -1}

@@ -20,6 +20,8 @@ namespace StrategyDemo.Tests.EditMode
         private PlacementGhost _ghost;
         private SpriteRenderer _buildingRenderer;
         private SpriteRenderer _footprintRenderer;
+        private SpriteRenderer _spawnMarkerRenderer;
+        private BuildingDefinition _producer;
         private BuildingDefinition _barracks;
         private BuildingDefinition _powerPlant;
 
@@ -29,17 +31,21 @@ namespace StrategyDemo.Tests.EditMode
             _board = new TestBoard(BoardOrigin, 10, 8);
             _barracks = _board.Definition("Barracks", new Vector2Int(3, 2));
             _powerPlant = _board.Definition("PowerPlant", new Vector2Int(2, 2));
-            _placer = new BuildingPlacer(new GridMap(10, 8), new OccupantRegistry(), new NullBuildingFactory());
+            _producer = _board.Producer("Producer", new Vector2Int(3, 3), _board.Unit("Soldier"));
+            _placer = new BuildingPlacer(new GridMap(10, 8), new OccupantRegistry(), new CellReservations(10, 8), new NullBuildingFactory());
 
             _ghostObject = new GameObject(nameof(PlacementGhostTests));
             _buildingRenderer = _ghostObject.AddComponent<SpriteRenderer>();
             _footprintRenderer = new GameObject("FootprintOverlay").AddComponent<SpriteRenderer>();
             _footprintRenderer.transform.SetParent(_ghostObject.transform, false);
             _footprintRenderer.drawMode = SpriteDrawMode.Tiled;
+            _spawnMarkerRenderer = new GameObject("SpawnMarker").AddComponent<SpriteRenderer>();
+            _spawnMarkerRenderer.transform.SetParent(_ghostObject.transform, false);
             _ghost = _ghostObject.AddComponent<PlacementGhost>();
             var serialized = new SerializedObject(_ghost);
             serialized.FindProperty("_buildingRenderer").objectReferenceValue = _buildingRenderer;
             serialized.FindProperty("_footprintRenderer").objectReferenceValue = _footprintRenderer;
+            serialized.FindProperty("_spawnMarkerRenderer").objectReferenceValue = _spawnMarkerRenderer;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -134,6 +140,53 @@ namespace StrategyDemo.Tests.EditMode
 
             Assert.That(_buildingRenderer.enabled, Is.False);
             Assert.That(_footprintRenderer.enabled, Is.False);
+        }
+
+        [Test]
+        public void ValidProducerCandidate_ShowsSpawnMarkerOnItsSpawnCell()
+        {
+            _ghost.Init(_placer, _board.View);
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            Assert.That(_spawnMarkerRenderer.enabled, Is.True);
+            // Spawn cell (4, 2): its centre, offset by the board origin.
+            Assert.That(_spawnMarkerRenderer.transform.position, Is.EqualTo(BoardOrigin + new Vector3(4.5f, 2.5f, 0f)));
+        }
+
+        [Test]
+        public void ProducerMovedToBottomEdge_SpawnMarkerFollowsToTheRightSide()
+        {
+            _ghost.Init(_placer, _board.View);
+            _placer.Begin(_producer);
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            _placer.MoveTo(new Vector2Int(3, 0));
+
+            Assert.That(_spawnMarkerRenderer.transform.position, Is.EqualTo(BoardOrigin + new Vector3(6.5f, 1.5f, 0f)));
+        }
+
+        [Test]
+        public void InvalidProducerCandidate_HidesSpawnMarker()
+        {
+            _ghost.Init(_placer, _board.View);
+            _placer.Begin(_producer);
+
+            _placer.MoveTo(new Vector2Int(-1, 0));
+
+            Assert.That(_spawnMarkerRenderer.enabled, Is.False);
+        }
+
+        [Test]
+        public void NonProducerCandidate_HidesSpawnMarker()
+        {
+            _ghost.Init(_placer, _board.View);
+            _placer.Begin(_powerPlant);
+
+            _placer.MoveTo(new Vector2Int(3, 3));
+
+            Assert.That(_spawnMarkerRenderer.enabled, Is.False);
         }
 
         private Color Tint(string field)

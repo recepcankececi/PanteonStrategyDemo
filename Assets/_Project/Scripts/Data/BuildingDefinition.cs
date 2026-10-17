@@ -22,8 +22,6 @@ namespace StrategyDemo.Data
         [SerializeField, Min(1)] private int _maxHealth = 1;
         [SerializeField, Tooltip("Units this building can produce. Empty = no production menu (R5).")]
         private UnitDefinition[] _producibleUnits = Array.Empty<UnitDefinition>();
-        [SerializeField, Tooltip("Cell, relative to the footprint's bottom-left cell, where produced units appear.")]
-        private Vector2Int _spawnOffset;
 
         /// <summary>Name shown to the player.</summary>
         public string DisplayName => _displayName;
@@ -40,11 +38,8 @@ namespace StrategyDemo.Data
         /// <summary>Units this building can produce, in menu order. Read-only by contract: never cast back to an array.</summary>
         public IReadOnlyList<UnitDefinition> ProducibleUnits => _producibleUnits;
 
-        /// <summary>True when the building has a production menu.</summary>
+        /// <summary>True when the building has a production menu, and so a spawn cell chosen when it is placed.</summary>
         public bool CanProduceUnits => _producibleUnits.Length > 0;
-
-        /// <summary>Spawn cell relative to the footprint's bottom-left cell.</summary>
-        public Vector2Int SpawnOffset => _spawnOffset;
 
         private void OnValidate()
         {

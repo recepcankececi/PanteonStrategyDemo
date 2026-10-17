@@ -65,11 +65,10 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         /// <summary>Creates a producing building definition; destroyed with the board.</summary>
-        public BuildingDefinition Producer(string assetName, Vector2Int footprint, Vector2Int spawnOffset, params UnitDefinition[] units)
+        public BuildingDefinition Producer(string assetName, Vector2Int footprint, params UnitDefinition[] units)
         {
             BuildingDefinition definition = Definition(assetName, footprint);
             var serialized = new SerializedObject(definition);
-            serialized.FindProperty("_spawnOffset").vector2IntValue = spawnOffset;
             SerializedProperty list = serialized.FindProperty("_producibleUnits");
             list.arraySize = units.Length;
             for (int i = 0; i < units.Length; i++)
@@ -141,16 +140,19 @@ namespace StrategyDemo.Tests.EditMode
 
         /// <summary>
         /// Builds a building like the Building prefab: renderer, hit flash and <see cref="Building"/> on the root,
-        /// health bar on a "HealthBar" child. The caller destroys the returned object.
+        /// health bar on a "HealthBar" child, spawn marker on a "SpawnMarker" child. The caller destroys the returned object.
         /// </summary>
         public static Building CreateBuildingObject(string name)
         {
             var root = new GameObject(name, typeof(SpriteRenderer), typeof(HitFlash));
             HealthBar healthBar = CreateHealthBar(root.transform);
+            var spawnMarker = new GameObject("SpawnMarker", typeof(SpriteRenderer));
+            spawnMarker.transform.SetParent(root.transform, false);
             var building = root.AddComponent<Building>();
             var serialized = new SerializedObject(building);
             serialized.FindProperty("_healthBar").objectReferenceValue = healthBar;
             serialized.FindProperty("_hitFlash").objectReferenceValue = root.GetComponent<HitFlash>();
+            serialized.FindProperty("_spawnMarker").objectReferenceValue = spawnMarker.GetComponent<SpriteRenderer>();
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return building;
         }

@@ -30,7 +30,7 @@ namespace StrategyDemo.Tests.EditMode
             Selection = new SelectionService(Grid, Registry);
             UnitFactory = new NullUnitFactory();
             BuildingFactory = new NullBuildingFactory();
-            Despawner = new OccupantDespawner(Grid, Registry, Movement, Selection);
+            Despawner = new OccupantDespawner(Grid, Registry, Reservations, Movement, Selection);
             Combat = new UnitCombat(Movement, new FreeForAllAttackRule(), Despawner);
         }
 
@@ -61,13 +61,26 @@ namespace StrategyDemo.Tests.EditMode
         /// <summary>A building on the area at <paramref name="origin"/>, set up the way <see cref="BuildingPlacer"/> leaves one.</summary>
         public Building Place(Vector2Int origin, Vector2Int size, int health)
         {
-            BuildingDefinition definition = Board.Definition($"Building{size.x}x{size.y}", size, health);
+            return Place(Board.Definition($"Building{size.x}x{size.y}", size, health), origin, null);
+        }
+
+        /// <summary>
+        /// A building of <paramref name="definition"/> at <paramref name="origin"/>, set up the way <see cref="BuildingPlacer"/>
+        /// leaves one: a producer also reserves <paramref name="spawnCell"/>.
+        /// </summary>
+        public Building Place(BuildingDefinition definition, Vector2Int origin, Vector2Int? spawnCell)
+        {
             Building building = TestBoard.CreateBuildingObject(definition.name);
             _objects.Add(building.gameObject);
             int id = Registry.NextId();
-            building.Init(definition, origin, id, Board.View.FootprintCenter(origin, size), BuildingFactory);
-            Grid.Occupy(origin, size, id);
+            building.Init(definition, origin, id, Board.View.FootprintCenter(origin, definition.Footprint), BuildingFactory, spawnCell);
+            Grid.Occupy(origin, definition.Footprint, id);
             Registry.Add(building);
+            if (spawnCell.HasValue)
+            {
+                Reservations.Reserve(spawnCell.Value, id);
+            }
+
             return building;
         }
 

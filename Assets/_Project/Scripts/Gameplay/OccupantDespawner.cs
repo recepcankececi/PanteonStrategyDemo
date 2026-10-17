@@ -10,8 +10,8 @@ namespace StrategyDemo.Gameplay
     /// <remarks>
     /// <para>Order, each step needing the object still intact:</para>
     /// <list type="number">
-    /// <item>Board: the object gives back what it holds (<see cref="IDespawnable.LeaveBoard"/>): a building its cells, a
-    /// soldier its cell, stop-cell reservation and move order.</item>
+    /// <item>Board: the object gives back what it holds (<see cref="IDespawnable.LeaveBoard"/>): a building its cells and
+    /// spawn cell, a soldier its cell, stop-cell reservation and move order.</item>
     /// <item>Movement: soldiers approaching it carry on to their stop cells as a plain move.</item>
     /// <item>Registry: its id leads nowhere any more (ids are never reused).</item>
     /// <item>Selection: dropped if selected, so the information panel and the highlight update.</item>
@@ -30,16 +30,18 @@ namespace StrategyDemo.Gameplay
 
         /// <param name="grid">Board occupancy; the dead object's cells are freed.</param>
         /// <param name="occupants">Registry the dead object is removed from.</param>
+        /// <param name="reservations">A dead building's spawn cell is given back here.</param>
         /// <param name="movement">Drops the dead soldier's orders and anyone approaching the dead object.</param>
         /// <param name="selection">Loses the dead object if it was selected.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-        public OccupantDespawner(GridMap grid, OccupantRegistry occupants, UnitMovement movement, SelectionService selection)
+        public OccupantDespawner(GridMap grid, OccupantRegistry occupants, CellReservations reservations, UnitMovement movement,
+            SelectionService selection)
         {
             _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _selection = selection ?? throw new ArgumentNullException(nameof(selection));
-            // Checks grid and movement for null; built once, so a despawn allocates nothing.
-            _board = new DespawnContext(grid, movement);
+            // Checks grid, reservations and movement for null; built once, so a despawn allocates nothing.
+            _board = new DespawnContext(grid, reservations, movement);
         }
 
         /// <summary>

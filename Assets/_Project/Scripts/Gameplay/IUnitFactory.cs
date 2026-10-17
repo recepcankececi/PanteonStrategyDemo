@@ -5,13 +5,13 @@ namespace StrategyDemo.Gameplay
 {
     /// <summary>
     /// Puts a soldier's scene object on the board and takes it off again. Kept behind an interface so the production rules
-    /// (<see cref="UnitProducer"/>) are tested without creating GameObjects.
+    /// (<see cref="UnitProducer"/>) can be tested with soldiers built by hand.
     /// </summary>
     public interface IUnitFactory
     {
-        /// <summary>Creates (or reuses) the scene object for a soldier that already holds its cell in the grid.</summary>
+        /// <summary>Creates (or reuses) the scene object for a soldier on <paramref name="cell"/>.</summary>
         /// <returns>The soldier; never null.</returns>
-        IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId);
+        Unit Create(UnitDefinition definition, Vector2Int cell, int occupantId);
 
         /// <summary>Takes a dead soldier's scene object off the board. Its grid cell is the caller's to free.</summary>
         /// <exception cref="System.ArgumentNullException"><paramref name="unit"/> is null.</exception>

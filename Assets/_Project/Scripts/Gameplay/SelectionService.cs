@@ -66,26 +66,23 @@ namespace StrategyDemo.Gameplay
         }
 
         /// <summary>
-        /// Box selection: selects every soldier holding a cell inside <paramref name="area"/>, in row order from the
-        /// bottom. Buildings are ignored (soldiers are what a box is for); a box with no soldier clears the selection.
-        /// The part of the area off the board is ignored.
+        /// Box selection: selects every soldier standing inside <paramref name="area"/>, in no particular order. Buildings
+        /// are ignored (soldiers are what a box is for); a box with no soldier clears the selection.
         /// </summary>
+        /// <remarks>
+        /// Soldiers are found by where they stand (<see cref="IBoardOccupant.Origin"/>), not through the grid: a soldier
+        /// passing through another one's cell, or a second soldier produced while the first is still on the spawn cell,
+        /// holds no grid cell for a moment, yet it is inside the box and must be selected.
+        /// </remarks>
         public void SelectSoldiersIn(RectInt area)
         {
             // Collected apart first, so an unchanged selection can be detected and raise no event.
             _boxed.Clear();
-            int xMax = Mathf.Min(area.xMax, _grid.Width);
-            int yMax = Mathf.Min(area.yMax, _grid.Height);
-            for (int y = Mathf.Max(area.yMin, 0); y < yMax; y++)
+            foreach (IBoardOccupant occupant in _occupants.All)
             {
-                for (int x = Mathf.Max(area.xMin, 0); x < xMax; x++)
+                if (occupant.IsMobile && area.Contains(occupant.Origin))
                 {
-                    IBoardOccupant occupant = OccupantOf(new Vector2Int(x, y));
-                    // A soldier holds one cell, so it is met once; buildings are skipped.
-                    if (occupant != null && occupant.IsMobile)
-                    {
-                        _boxed.Add(occupant);
-                    }
+                    _boxed.Add(occupant);
                 }
             }
 
@@ -131,9 +128,11 @@ namespace StrategyDemo.Gameplay
                 return false;
             }
 
+            // Compared as sets: the registry's order is not stable, and the same soldiers in another order are the
+            // same selection. A box holds few soldiers, so the quadratic check is cheap.
             for (int i = 0; i < candidates.Count; i++)
             {
-                if (!ReferenceEquals(candidates[i], _selected[i]))
+                if (!_selected.Contains(candidates[i]))
                 {
                     return false;
                 }

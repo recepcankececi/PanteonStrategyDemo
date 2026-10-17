@@ -59,6 +59,12 @@ namespace StrategyDemo.Gameplay
             return _occupants.Remove(occupantId);
         }
 
+        /// <summary>
+        /// Every registered occupant. Typed as the dictionary's own value collection so a <c>foreach</c> over it uses a
+        /// struct enumerator and allocates nothing; it is a read-only view.
+        /// </summary>
+        public Dictionary<int, IBoardOccupant>.ValueCollection All => _occupants.Values;
+
         /// <summary>Looks up the occupant registered under <paramref name="occupantId"/>.</summary>
         public bool TryGet(int occupantId, out IBoardOccupant occupant)
         {

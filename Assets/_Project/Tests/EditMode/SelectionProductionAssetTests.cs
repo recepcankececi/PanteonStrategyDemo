@@ -18,7 +18,6 @@ namespace StrategyDemo.Tests.EditMode
         private const string RowPrefabPath = "Assets/_Project/Prefabs/UI/UnitProductionItem.prefab";
         private const string SelectionMarkerPrefabPath = "Assets/_Project/Prefabs/Board/SelectionMarker.prefab";
         private const string CellHighlightPath = "Assets/_Project/Art/Generated/Board/CellHighlight.png";
-        private const string BarracksPath = "Assets/_Project/ScriptableObjects/Buildings/Barracks.asset";
         private const string BoardGroup = "--- Board ---";
         private const string UiGroup = "--- UI ---";
         private const string ObjectsLayer = "Objects";
@@ -38,14 +37,6 @@ namespace StrategyDemo.Tests.EditMode
         public void CloseMainScene()
         {
             EditorSceneManager.ClosePreviewScene(_scene);
-        }
-
-        [Test]
-        public void Barracks_SpawnsBelowMiddleOfBottomRow()
-        {
-            var barracks = AssetDatabase.LoadAssetAtPath<BuildingDefinition>(BarracksPath);
-
-            Assert.That(barracks.SpawnOffset, Is.EqualTo(new Vector2Int(barracks.Footprint.x / 2, -1)));
         }
 
         [Test]

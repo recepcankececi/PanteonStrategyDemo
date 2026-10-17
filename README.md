@@ -19,7 +19,7 @@ Barracks, move them around buildings with A\* and attack buildings or other sold
 | **Shift** + left-click while placing | Place and keep placing the same building |
 | Right-click or **Esc** while placing | Cancel placement |
 | Left-click a building or soldier | Select it; the **Information Panel** shows it |
-| Left-click a soldier type in the Information Panel | Produce that soldier at the selected Barracks' spawn point |
+| Left-click a soldier type in the Information Panel | Produce that soldier on the selected Barracks' spawn point (the marked cell); it then walks to the nearest free cell. Greyed out while no free cell is left |
 | Left-drag on the board | Box-select soldiers |
 | Left-click an empty cell | Clear the selection |
 | Right-click an empty cell (soldiers selected) | Move along the shortest path; a group spreads over nearby free cells |
@@ -40,8 +40,8 @@ There is no enemy faction: as the case allows, soldiers attack your own building
 | Information Panel shows the selected building; producers list their units | Image, name, HP, size; Barracks adds its three soldiers with image and damage | `Scripts/UI/InfoPanel.cs` |
 | Only Barracks produce units; Power Plant has no production menu | Production list exists only when the definition has producible units | `BuildingDefinition.CanProduceUnits` |
 | Soldiers: left-click select, right-click move via shortest path around buildings | A\* over the grid, buildings are walls | `Scripts/Core/Pathfinder.cs`, `Scripts/Gameplay/UnitMovement.cs` |
-| Each Barracks has a spawn point | Cell below the Barracks (data: `SpawnOffset`); falls back to the nearest reachable free cell | `UnitProducer` |
-| 3 soldier types, HP 10; damage 10 / 5 / 2 | Soldier1 = **Assault** (damage 10), Soldier2 = **Rifleman** (5), Soldier3 = **Scout** (2, range 3); all HP 10 | `ScriptableObjects/Units/` |
+| Each Barracks has a spawn point | A marked cell beside the Barracks, chosen when it is placed (middle of the bottom side, else right, top, left) and kept for life. Soldiers always appear there and walk to the nearest free cell; no building and no stopping soldier may take it. A spot with no usable side is red | `SpawnSides`, `BuildingPlacer`, `UnitProducer` |
+| 3 soldier types, HP 10; damage 10 / 5 / 2 | Soldier1 = **Assault** (damage 10, range 2), Soldier2 = **Rifleman** (5, range 3), Soldier3 = **Scout** (2, range 4); all HP 10, every shot draws a tracer | `ScriptableObjects/Units/` |
 | Building HP: Barracks 100, Power Plant 50, others their own | 100, 50, Command Center 200, Supply Depot 60, Radar 80, Guard Tower 120 | `ScriptableObjects/Buildings/` |
 | Right-click attacks a soldier or building | Selected soldiers chase the target, then hit it on an interval | `Scripts/Gameplay/UnitCombat.cs` |
 | Destroyed at HP 0 | One despawn path frees cells, selection and attackers, returns the object to its pool | `Scripts/Gameplay/OccupantDespawner.cs` |
@@ -51,8 +51,9 @@ There is no enemy faction: as the case allows, soldiers attack your own building
 | Infinite scroll uses object pooling | Rows come from `ObjectPool<T>`; scrolling never instantiates | `Scripts/Core/ObjectPool.cs`, `InfiniteScrollMath.cs` |
 | Layout: Production Menu left, board centre, Information right | Three-panel Canvas, board framed between them | `Scenes/Main.unity` |
 | Pathfinding with A\* | Octile heuristic, binary-heap open list, no diagonal corner cutting | `Pathfinder`, `PathNodeHeap` |
+| All edge cases considered | Every case per system with the test that proves it, plus the few limits accepted on purpose | [`Docs/EdgeCases.md`](Docs/EdgeCases.md) |
 
-Paths above are relative to `Assets/_Project/`. Every logic rule in the table has EditMode tests (625 in total).
+Paths above are relative to `Assets/_Project/`. Every logic rule in the table has EditMode tests (678 in total); how each edge case is handled, and which test proves it, is listed in [Docs/EdgeCases.md](Docs/EdgeCases.md).
 
 ## Architecture
 
@@ -76,8 +77,8 @@ Assets/_Project/Scripts/
 - **Data-driven.** Names, sprites, footprints, HP, damage, range, attack interval, speed and the grid size live in
   ScriptableObjects. A new building is a new asset added to `BuildingCatalog`; no code changes.
 - **A\*.** 8-directional grid search with an octile heuristic and a binary heap; buildings are walls, soldiers are
-  not (each soldier reserves the cell it will stop on instead). An unreachable goal ends at the closest reachable
-  cell. Buffers are reused, so a search allocates nothing after warm-up.
+  not (each soldier reserves the cell it will stop on instead, and each Barracks reserves its spawn cell for its
+  whole life). An unreachable goal ends at the closest reachable cell. Buffers are reused, so a search allocates nothing after warm-up.
 - **Pooling.** Production Menu rows, Information Panel rows, soldiers, buildings, selection markers and combat
   effects all come from `ObjectPool<T>` and reset their state on release. The Production Menu keeps only the rows
   that fit on screen plus one, moves the row that scrolls out to the other end and rebinds it.
@@ -100,7 +101,7 @@ Assets/_Project/Scripts/
 Unity.exe -batchmode -quit -projectPath . -executeMethod StrategyDemo.EditorTools.BuildScript.BuildWindows -logFile Builds/build.log
 ```
 
-**Tests:** `Window > General > Test Runner > EditMode > Run All` (assembly `StrategyDemo.Tests.EditMode`, 625 tests).
+**Tests:** `Window > General > Test Runner > EditMode > Run All` (assembly `StrategyDemo.Tests.EditMode`, 678 tests).
 
 ## Art
 

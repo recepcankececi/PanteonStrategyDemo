@@ -521,6 +521,100 @@ namespace StrategyDemo.Tests.EditMode
             });
         }
 
+        [Test]
+        public void StepAside_OnCellReservedByABuilding_WalksToNearestFreeCell()
+        {
+            // A Barracks' spawn cell: reserved by the building, so the soldier standing on it must move on.
+            IBoardOccupant barracks = PlaceBuilding(new Vector2Int(3, 3), new Vector2Int(3, 3));
+            var spawnCell = new Vector2Int(4, 2);
+            _reservations.Reserve(spawnCell, barracks.OccupantId);
+            Unit unit = SpawnUnreserved(spawnCell);
+
+            _movement.StepAside(unit);
+            RunUntilIdle();
+
+            AssertAt(unit, new Vector2Int(4, 1));
+            Assert.That(_grid.GetOccupant(spawnCell), Is.EqualTo(GridMap.EmptyId));
+            Assert.That(_reservations.OwnerOf(spawnCell), Is.EqualTo(barracks.OccupantId));
+        }
+
+        [Test]
+        public void StepAside_OnAFreeCell_StaysThere()
+        {
+            Unit unit = SpawnUnreserved(new Vector2Int(2, 2));
+
+            _movement.StepAside(unit);
+            RunUntilIdle();
+
+            AssertAt(unit, new Vector2Int(2, 2));
+            Assert.That(_reservations.OwnerOf(new Vector2Int(2, 2)), Is.EqualTo(unit.OccupantId));
+        }
+
+        [Test]
+        public void StepAside_SoldierWithoutGridCell_TakesOneOnceTheHolderLeaves()
+        {
+            // Two soldiers produced in one frame share the spawn cell; only the first holds it in the grid.
+            IBoardOccupant barracks = PlaceBuilding(new Vector2Int(3, 3), new Vector2Int(3, 3));
+            var spawnCell = new Vector2Int(4, 2);
+            _reservations.Reserve(spawnCell, barracks.OccupantId);
+            Unit first = SpawnUnreserved(spawnCell);
+            Unit second = SpawnUnreserved(spawnCell, holdsCell: false);
+
+            _movement.StepAside(first);
+            _movement.StepAside(second);
+            RunUntilIdle();
+
+            Assert.That(first.Origin, Is.Not.EqualTo(second.Origin));
+            Assert.That(_grid.GetOccupant(first.Origin), Is.EqualTo(first.OccupantId));
+            Assert.That(_grid.GetOccupant(second.Origin), Is.EqualTo(second.OccupantId));
+            AssertGridMatchesSoldiers();
+        }
+
+        [Test]
+        public void StepAside_Null_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => _movement.StepAside(null));
+        }
+
+        [Test]
+        public void HasStopCellNear_OpenBoard_IsTrue()
+        {
+            Assert.That(_movement.HasStopCellNear(new Vector2Int(4, 4)), Is.True);
+        }
+
+        [Test]
+        public void HasStopCellNear_CellWalledInByBuildings_IsFalse()
+        {
+            // (0, 0) with buildings on (1, 0) and (0, 1): no step leads anywhere, and (0, 0) itself is reserved.
+            PlaceBuilding(new Vector2Int(1, 0), Vector2Int.one);
+            PlaceBuilding(new Vector2Int(0, 1), Vector2Int.one);
+            _reservations.Reserve(Vector2Int.zero, _registry.NextId());
+
+            Assert.That(_movement.HasStopCellNear(Vector2Int.zero), Is.False);
+        }
+
+        [Test]
+        public void HasStopCellNear_OffBoard_IsFalse()
+        {
+            Assert.That(_movement.HasStopCellNear(new Vector2Int(-1, 0)), Is.False);
+        }
+
+        /// <summary>A soldier standing on <paramref name="cell"/> without a stop-cell reservation, as just produced.</summary>
+        private Unit SpawnUnreserved(Vector2Int cell, bool holdsCell = true)
+        {
+            Unit unit = TestBoard.CreateUnitObject("Soldier");
+            _units.Add(unit);
+            int id = _registry.NextId();
+            unit.Init(_soldier, cell, id, _board.View.CellToWorld(cell));
+            if (holdsCell)
+            {
+                _grid.Occupy(cell, Vector2Int.one, id);
+            }
+
+            _registry.Add(unit);
+            return unit;
+        }
+
         private Unit Spawn(Vector2Int cell)
         {
             Unit unit = TestBoard.CreateUnitObject("Soldier");

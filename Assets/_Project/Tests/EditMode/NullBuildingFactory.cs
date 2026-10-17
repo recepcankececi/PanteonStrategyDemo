@@ -12,7 +12,7 @@ namespace StrategyDemo.Tests.EditMode
     {
         public int ReleasedCount { get; private set; }
 
-        public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId)
+        public IBoardOccupant Create(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector2Int? spawnCell)
         {
             return new FakeOccupant(occupantId, origin, definition.Footprint);
         }

@@ -24,6 +24,7 @@ namespace StrategyDemo.Tests.EditMode
         private const string HealthBarPath = GeneratedArtImporter.RootFolder + "Board/HealthBar.png";
         private const string TracerPath = GeneratedArtImporter.RootFolder + "Board/Tracer.png";
         private const string DeathBurstPath = GeneratedArtImporter.RootFolder + "Board/DeathBurst.png";
+        private const string SpawnMarkerPath = GeneratedArtImporter.RootFolder + "Board/SpawnMarker.png";
         private const string EffectSettingsPath = "Assets/_Project/ScriptableObjects/Effects/CombatEffectSettings.asset";
         private const string WorldAtlasPath = "Assets/_Project/Art/Atlases/WorldAtlas.spriteatlasv2";
         private const string UiAtlasPath = "Assets/_Project/Art/Atlases/UIAtlas.spriteatlasv2";
@@ -161,12 +162,13 @@ namespace StrategyDemo.Tests.EditMode
         public void WorldAtlas_PacksExactlyTheBoardSpritesInUse()
         {
             // The ground is not packed: it tiles, and bilinear sampling at a tile edge would blend in atlas padding.
-            string[] boardSprites = { CellHighlightPath, BoardEdgePath, HealthBarPath, TracerPath, DeathBurstPath };
+            string[] boardSprites = { CellHighlightPath, BoardEdgePath, HealthBarPath, SpawnMarkerPath, TracerPath, DeathBurstPath };
             Assert.That(Packables(WorldAtlasPath), Is.EquivalentTo(new[] { BuildingsFolder, UnitsFolder }.Concat(boardSprites)));
 
             // The cell highlight (selection, placement, drag box), the board edge and the health bar are used by the
             // scene and prefabs; the tracer and the burst by the combat effect settings.
-            var used = new HashSet<string> { CellHighlightPath, BoardEdgePath, HealthBarPath };
+            // The spawn marker is used by the Building prefab and the placement ghost (PlacementAssetTests checks both).
+            var used = new HashSet<string> { CellHighlightPath, BoardEdgePath, HealthBarPath, SpawnMarkerPath };
             var effects = AssetDatabase.LoadAssetAtPath<CombatEffectSettings>(EffectSettingsPath);
             used.Add(AssetDatabase.GetAssetPath(effects.TracerSprite));
             used.Add(AssetDatabase.GetAssetPath(effects.BurstSprite));

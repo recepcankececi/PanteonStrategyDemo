@@ -1,9 +1,9 @@
 // Board sprites that are not objects: the ground tile, the board's closing edge, the white cell used for highlights,
-// the health bar strip and the combat effects (Scout tracer, destruction burst).
+// the health bar strip, the Barracks spawn marker and the combat effects (tracer, destruction burst).
 'use strict';
 
 const C = require('./palette');
-const { CELL, svg, rect, circle } = require('./svg');
+const { CELL, svg, rect, circle, outlinedLine } = require('./svg');
 
 /**
  * Seamless one-cell field tile. Unity tiles it over the whole board, so the faint line on its top and left
@@ -58,7 +58,7 @@ function healthBar() {
 }
 
 /**
- * Scout tracer: a white streak, opaque in the middle and fading at both ends. Unity stretches it along X from the
+ * Tracer: a white streak, opaque in the middle and fading at both ends. Unity stretches it along X from the
  * shooter to the target and tints and fades it with SpriteRenderer.color (CombatEffects.cs), so it stays one atlas
  * sprite on the shared material. Ends fade so the stretched streak has no hard edge.
  */
@@ -75,6 +75,31 @@ function tracer() {
   ].join('\n'));
 }
 
+
+/**
+ * Barracks spawn marker: a concrete pad with hazard-yellow corner brackets and a yellow ring, drawn on the ground under
+ * the cell where produced soldiers appear. Symmetric on purpose: the same sprite serves every side of the building.
+ * Inset from the cell edge so neighbouring cells keep their grid line.
+ */
+function spawnMarker() {
+  const inset = 6;
+  const arm = 12;
+  const far = CELL - inset;
+  const brackets = [
+    `M${inset} ${inset + arm} V${inset} H${inset + arm}`,
+    `M${far - arm} ${inset} H${far} V${inset + arm}`,
+    `M${far} ${far - arm} V${far} H${far - arm}`,
+    `M${inset + arm} ${far} H${inset} V${far - arm}`,
+  ].map((d) => outlinedLine(d, C.yellow, 4));
+  const c = CELL / 2;
+  return svg(CELL, CELL, [
+    rect(inset, inset, CELL - 2 * inset, CELL - 2 * inset, C.padDark, 'rx="6" opacity="0.55"'),
+    ...brackets,
+    circle(c, c, 11, 'none', `stroke="${C.outline}" stroke-width="6.5"`),
+    circle(c, c, 11, 'none', `stroke="${C.yellow}" stroke-width="4"`),
+    circle(c, c, 4, C.yellow, `stroke="${C.outline}" stroke-width="1.5"`),
+  ].join('\n'));
+}
 /** Points of a star polygon centred on the canvas: alternating outer and inner radius, first spike pointing up. */
 function starPoints(spikes, outer, inner, turn) {
   const points = [];
@@ -113,6 +138,7 @@ module.exports = [
   { name: 'CellHighlight', cells: [1, 1], build: cellHighlight },
   { name: 'BoardEdge', cells: [1, 1], build: boardEdge },
   { name: 'HealthBar', size: HEALTH_BAR_SIZE, build: healthBar },
+  { name: 'SpawnMarker', cells: [1, 1], build: spawnMarker },
   { name: 'Tracer', size: TRACER_SIZE, build: tracer },
   { name: 'DeathBurst', cells: [1, 1], build: deathBurst },
 ];

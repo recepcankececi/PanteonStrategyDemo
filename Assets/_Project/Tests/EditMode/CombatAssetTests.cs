@@ -121,13 +121,14 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
-        public void UnitData_OnlyRangedSoldiersFireTracers()
+        public void UnitData_EverySoldierIsRangedAndFiresTracers()
         {
             foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(UnitDefinition), new[] { UnitDataFolder }))
             {
                 var unit = AssetDatabase.LoadAssetAtPath<UnitDefinition>(AssetDatabase.GUIDToAssetPath(guid));
-                // A tracer shows a shot from afar; melee soldiers hit the cell next to them.
-                Assert.That(unit.FiresTracer, Is.EqualTo(unit.AttackRange > 1), unit.name);
+                // No melee soldier: every one shoots from at least two cells away, and every shot shows as a tracer.
+                Assert.That(unit.AttackRange, Is.GreaterThanOrEqualTo(2), unit.name);
+                Assert.That(unit.FiresTracer, Is.True, unit.name);
             }
         }
 

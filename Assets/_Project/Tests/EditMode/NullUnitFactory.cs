@@ -1,3 +1,4 @@
+using System;
 using StrategyDemo.Data;
 using StrategyDemo.Gameplay;
 using UnityEngine;
@@ -5,16 +6,16 @@ using UnityEngine;
 namespace StrategyDemo.Tests.EditMode
 {
     /// <summary>
-    /// Factory that creates no scene object and keeps released soldiers where they are, for tests whose soldiers are
-    /// built by hand (<see cref="TestBoard.CreateUnitObject"/>) and destroyed by the test.
+    /// Factory that creates nothing and keeps released soldiers where they are, for tests whose soldiers are built by
+    /// hand (<see cref="TestBoard.CreateUnitObject"/>) and destroyed by the test.
     /// </summary>
     internal sealed class NullUnitFactory : IUnitFactory
     {
         public int ReleasedCount { get; private set; }
 
-        public IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId)
+        public Unit Create(UnitDefinition definition, Vector2Int cell, int occupantId)
         {
-            return new FakeOccupant(occupantId, cell, Vector2Int.one, isMobile: true);
+            throw new InvalidOperationException($"{nameof(NullUnitFactory)} creates no soldiers; use {nameof(TestUnitFactory)}.");
         }
 
         public void Release(Unit unit)

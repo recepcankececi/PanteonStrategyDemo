@@ -31,9 +31,9 @@ namespace StrategyDemo.Tests.EditMode
         // asset, display name, damage, range, standing sprite. R7's Soldier 1/2/3 are Assault, Rifleman and Scout.
         private static readonly object[] Soldiers =
         {
-            new object[] { "Assault", "Assault", 10, 1, "Assault_Stand" },
-            new object[] { "Rifleman", "Rifleman", 5, 1, "Rifleman_Stand" },
-            new object[] { "Scout", "Scout", 2, 3, "Scout_Stand" }
+            new object[] { "Assault", "Assault", 10, 2, "Assault_Stand" },
+            new object[] { "Rifleman", "Rifleman", 5, 3, "Rifleman_Stand" },
+            new object[] { "Scout", "Scout", 2, 4, "Scout_Stand" }
         };
 
         private BuildingCatalog _catalog;
@@ -121,20 +121,6 @@ namespace StrategyDemo.Tests.EditMode
             string[] produced = LoadBuilding("Barracks").ProducibleUnits.Select(unit => unit.DisplayName).ToArray();
 
             Assert.That(produced, Is.EqualTo(new[] { "Assault", "Rifleman", "Scout" }));
-        }
-
-        [Test]
-        public void Barracks_SpawnCellIsJustOutsideItsFootprint()
-        {
-            BuildingDefinition barracks = LoadBuilding("Barracks");
-            Vector2Int size = barracks.Footprint;
-            Vector2Int spawn = barracks.SpawnOffset;
-
-            // Chebyshev distance from the spawn cell to the nearest footprint cell: 0 = inside, 1 = touching.
-            int dx = Mathf.Max(0, -spawn.x, spawn.x - (size.x - 1));
-            int dy = Mathf.Max(0, -spawn.y, spawn.y - (size.y - 1));
-
-            Assert.That(Mathf.Max(dx, dy), Is.EqualTo(1), "Units must appear next to the Barracks, not inside or far away.");
         }
 
         [Test]

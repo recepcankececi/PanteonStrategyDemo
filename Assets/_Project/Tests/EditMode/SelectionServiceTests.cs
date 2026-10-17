@@ -136,6 +136,19 @@ namespace StrategyDemo.Tests.EditMode
         }
 
         [Test]
+        public void SelectSoldiersIn_SoldierSharingAnotherSoldiersCell_IsSelectedToo()
+        {
+            // Two soldiers produced in one frame stand on the spawn cell; only the first holds it in the grid.
+            IBoardOccupant holder = PlaceSoldier(new Vector2Int(2, 2));
+            var sharer = new FakeOccupant(_registry.NextId(), new Vector2Int(2, 2), Vector2Int.one, isMobile: true);
+            _registry.Add(sharer);
+
+            _selection.SelectSoldiersIn(new RectInt(1, 1, 3, 3));
+
+            Assert.That(_selection.All, Is.EquivalentTo(new[] { holder, sharer }));
+        }
+
+        [Test]
         public void SelectSoldiersIn_NoSoldierInside_ClearsSelection()
         {
             Place(new Vector2Int(2, 2), Vector2Int.one);

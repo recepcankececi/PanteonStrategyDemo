@@ -54,7 +54,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Create_PutsBuildingUnderContainerWithDataNameAndSprite()
         {
-            _factory.Create(_barracks, new Vector2Int(4, 2), 7);
+            _factory.Create(_barracks, new Vector2Int(4, 2), 7, null);
 
             Assert.That(_container.childCount, Is.EqualTo(1));
             Building building = _container.GetChild(0).GetComponent<Building>();
@@ -69,7 +69,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Create_PlacesPivotAtCentreOfFootprint()
         {
-            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1);
+            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1, null);
 
             // Cells (4..6, 2..3): centre at x = 4 + 1.5, y = 2 + 1.
             Assert.That(building.transform.position, Is.EqualTo(BoardOrigin + new Vector3(5.5f, 3f, 0f)));
@@ -79,7 +79,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Release_ThenCreate_ReusesTheBuildingUnderPoolInBetween()
         {
-            var first = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1);
+            var first = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1, null);
             first.Health.TakeDamage(10);
 
             _factory.Release(first);
@@ -87,7 +87,7 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(first.gameObject.activeSelf, Is.False);
             Assert.That(first.Definition, Is.Null, "Reset on release: no stale type.");
 
-            var second = (Building)_factory.Create(_barracks, new Vector2Int(0, 0), 2);
+            var second = (Building)_factory.Create(_barracks, new Vector2Int(0, 0), 2, null);
             Assert.That(second, Is.SameAs(first));
             Assert.That(second.transform.parent, Is.SameAs(_container));
             Assert.That(second.Health.Current, Is.EqualTo(second.Health.Max), "Reused at full health.");
@@ -97,7 +97,7 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Footprint_OfReleasedBuilding_ThrowsClearError()
         {
-            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1);
+            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1, null);
             _factory.Release(building);
 
             Assert.Throws<InvalidOperationException>(() => _ = building.Footprint);
@@ -106,10 +106,68 @@ namespace StrategyDemo.Tests.EditMode
         [Test]
         public void Release_Twice_Throws()
         {
-            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1);
+            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1, null);
             _factory.Release(building);
 
             Assert.Throws<InvalidOperationException>(() => _factory.Release(building));
+        }
+
+        [Test]
+        public void Create_WithSpawnCell_ShowsSpawnMarkerOnThatCell()
+        {
+            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1, new Vector2Int(5, 1));
+
+            SpriteRenderer marker = SpawnMarker(building);
+            Assert.That(building.HasSpawnCell, Is.True);
+            Assert.That(building.SpawnCell, Is.EqualTo(new Vector2Int(5, 1)));
+            Assert.That(marker.enabled, Is.True);
+            // Centre of cell (5, 1), offset by the board origin.
+            Assert.That(marker.transform.position, Is.EqualTo(BoardOrigin + new Vector3(5.5f, 1.5f, 0f)));
+        }
+
+        [Test]
+        public void Create_WithoutSpawnCell_HidesSpawnMarker()
+        {
+            var building = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1, null);
+
+            Assert.That(building.HasSpawnCell, Is.False);
+            Assert.That(SpawnMarker(building).enabled, Is.False);
+        }
+
+        [Test]
+        public void Release_ThenCreateWithoutSpawnCell_ReusedBuildingShowsNoOldMarker()
+        {
+            var first = (Building)_factory.Create(_barracks, new Vector2Int(4, 2), 1, new Vector2Int(5, 1));
+            _factory.Release(first);
+
+            var second = (Building)_factory.Create(_barracks, new Vector2Int(0, 0), 2, null);
+
+            Assert.That(second, Is.SameAs(first));
+            Assert.That(second.HasSpawnCell, Is.False);
+            Assert.That(SpawnMarker(second).enabled, Is.False);
+        }
+
+        [Test]
+        public void Building_InitWithoutSpawnMarker_Throws()
+        {
+            // Everything else assigned, so only the missing marker can be the reason.
+            Building bare = TestBoard.CreateBuildingObject("Bare");
+            var serialized = new UnityEditor.SerializedObject(bare);
+            serialized.FindProperty("_spawnMarker").objectReferenceValue = null;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            try
+            {
+                Assert.Throws<InvalidOperationException>(() => bare.Init(_barracks, Vector2Int.zero, 1, Vector3.zero));
+            }
+            finally
+            {
+                Object.DestroyImmediate(bare.gameObject);
+            }
+        }
+
+        private static SpriteRenderer SpawnMarker(Building building)
+        {
+            return building.transform.Find("SpawnMarker").GetComponent<SpriteRenderer>();
         }
 
         [Test]

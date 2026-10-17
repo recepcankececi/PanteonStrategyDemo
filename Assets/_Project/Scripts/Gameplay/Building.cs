@@ -14,6 +14,8 @@ namespace StrategyDemo.Gameplay
     {
         [SerializeField, Tooltip("Bar drawn at the top of the footprint.")] private HealthBar _healthBar;
         [SerializeField, Tooltip("Flash on this renderer when the building is hit.")] private HitFlash _hitFlash;
+        [SerializeField, Tooltip("Drawn on the spawn cell of a building that produces soldiers; hidden otherwise.")]
+        private SpriteRenderer _spawnMarker;
 
         private readonly Health _health = new Health();
         private SpriteRenderer _renderer;
@@ -45,22 +47,33 @@ namespace StrategyDemo.Gameplay
         /// <inheritdoc/>
         public Health Health => _health;
 
+        /// <summary>True for a building that produces soldiers: it owns a spawn cell.</summary>
+        public bool HasSpawnCell { get; private set; }
+
+        /// <summary>
+        /// Cell where this building's soldiers appear, chosen once at placement (<see cref="BuildingPlacer"/>) and reserved
+        /// for the building's whole life. Meaningful only while <see cref="HasSpawnCell"/>.
+        /// </summary>
+        public Vector2Int SpawnCell { get; private set; }
+
         /// <summary>Shows <paramref name="definition"/> standing on the area at <paramref name="origin"/>, at full health.</summary>
         /// <param name="worldPosition">Centre of the area; the sprite's pivot goes here.</param>
         /// <param name="owner">Factory that <see cref="IDespawnable.ReturnToPool"/> hands the building back to; null only in tests
         /// that never despawn it.</param>
+        /// <param name="spawnCell">Where produced soldiers appear; null for a building that produces nothing.</param>
         /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
-        /// <exception cref="InvalidOperationException">The health bar or hit flash is not assigned.</exception>
-        public void Init(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector3 worldPosition, IBuildingFactory owner = null)
+        /// <exception cref="InvalidOperationException">The health bar, hit flash or spawn marker is not assigned.</exception>
+        public void Init(BuildingDefinition definition, Vector2Int origin, int occupantId, Vector3 worldPosition, IBuildingFactory owner = null,
+            Vector2Int? spawnCell = null)
         {
             if (definition == null)
             {
                 throw new ArgumentNullException(nameof(definition));
             }
 
-            if (_healthBar == null || _hitFlash == null)
+            if (_healthBar == null || _hitFlash == null || _spawnMarker == null)
             {
-                throw new InvalidOperationException($"{nameof(Building)} '{name}' has no health bar or hit flash assigned.");
+                throw new InvalidOperationException($"{nameof(Building)} '{name}' has no health bar, hit flash or spawn marker assigned.");
             }
 
             Definition = definition;
@@ -71,6 +84,7 @@ namespace StrategyDemo.Gameplay
             name = $"{definition.name}_{occupantId}";
             transform.position = worldPosition;
             Renderer.sprite = definition.Sprite;
+            ShowSpawnCell(spawnCell, definition.Footprint);
             _healthBar.Bind(_health, definition.Footprint);
             _hitFlash.Bind(_health);
             _health.Reset(definition.MaxHealth);
@@ -87,7 +101,10 @@ namespace StrategyDemo.Gameplay
         /// <inheritdoc/>
         void IDespawnable.LeaveBoard(DespawnContext board)
         {
-            // A building holds nothing but its footprint cells.
+            // A building holds its footprint cells and, if it produces soldiers, the reservation of its spawn cell.
+            // Reservation first: releasing the grid raises AreaChanged, and listeners (the placement preview) must
+            // already see the spawn cell free; releasing a reservation raises no event of its own.
+            board.Reservations.Release(OccupantId);
             board.Grid.Release(Origin, Footprint, OccupantId);
         }
 
@@ -115,11 +132,32 @@ namespace StrategyDemo.Gameplay
                 _hitFlash.Unbind();
             }
 
+            if (_spawnMarker != null)
+            {
+                _spawnMarker.enabled = false;
+            }
+
             Renderer.sprite = null;
             Definition = null;
             _owner = null;
             OccupantId = 0;
             Origin = default;
+            HasSpawnCell = false;
+            SpawnCell = default;
+        }
+
+        private void ShowSpawnCell(Vector2Int? spawnCell, Vector2Int footprint)
+        {
+            HasSpawnCell = spawnCell.HasValue;
+            SpawnCell = spawnCell.GetValueOrDefault();
+            _spawnMarker.enabled = HasSpawnCell;
+            if (HasSpawnCell)
+            {
+                // The root sits at the footprint centre and never rotates or scales, so the marker's local position is
+                // the spawn cell's centre minus the footprint's centre, in cells.
+                Vector2 cellCenter = (Vector2)(SpawnCell - Origin) + Vector2.one * 0.5f;
+                _spawnMarker.transform.localPosition = (cellCenter - (Vector2)footprint * 0.5f) * GridConfig.CellWorldSize;
+            }
         }
 
         // Lazy so it also works on objects whose Awake has not run (EditMode tests).

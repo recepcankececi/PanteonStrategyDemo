@@ -32,13 +32,15 @@ namespace StrategyDemo.Tests.EditMode
         {
             GridMap g = _world.Grid;
             OccupantRegistry r = _world.Registry;
+            CellReservations c = _world.Reservations;
             UnitMovement m = _world.Movement;
             SelectionService s = _world.Selection;
 
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(null, r, m, s));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, null, m, s));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, null, s));
-            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, m, null));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(null, r, c, m, s));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, null, c, m, s));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, null, m, s));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, c, null, s));
+            Assert.Throws<ArgumentNullException>(() => new OccupantDespawner(g, r, c, m, null));
         }
 
         [Test]
@@ -60,6 +62,40 @@ namespace StrategyDemo.Tests.EditMode
             Assert.That(_world.Reservations.TryGetCell(id, out _), Is.False);
             Assert.That(_world.Registry.TryGet(id, out _), Is.False);
             Assert.That(_world.UnitFactory.ReleasedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Despawn_Barracks_GivesBackItsSpawnCell()
+        {
+            BuildingDefinition barracks = _world.Board.Producer("Barracks", new Vector2Int(3, 3), _soldier);
+            var spawnCell = new Vector2Int(4, 2);
+            Building building = _world.Place(barracks, new Vector2Int(3, 3), spawnCell);
+            int id = building.OccupantId;
+
+            _world.Despawner.Despawn(building);
+
+            Assert.That(_world.Reservations.OwnerOf(spawnCell), Is.EqualTo(GridMap.EmptyId), "An ordinary cell again: soldiers may stop there.");
+            Assert.That(_world.Reservations.TryGetCell(id, out _), Is.False);
+        }
+
+        [Test]
+        public void Despawn_BarracksUnderStillPreview_PreviewOverItsSpawnCellTurnsValid()
+        {
+            // The preview hears only grid events; the spawn cell must already be free when the grid event fires.
+            BuildingDefinition barracks = _world.Board.Producer("Barracks", new Vector2Int(3, 3), _soldier);
+            Building building = _world.Place(barracks, new Vector2Int(3, 3), new Vector2Int(4, 2));
+            var placer = new BuildingPlacer(_world.Grid, _world.Registry, _world.Reservations, _world.BuildingFactory);
+            int changed = 0;
+            placer.Changed += () => changed++;
+            placer.Begin(_world.Board.Definition("GuardTower", Vector2Int.one));
+            placer.MoveTo(new Vector2Int(4, 2));
+            Assert.That(placer.IsCandidateValid, Is.False, "On the Barracks' spawn cell.");
+            changed = 0;
+
+            _world.Despawner.Despawn(building);
+
+            Assert.That(placer.IsCandidateValid, Is.True);
+            Assert.That(changed, Is.EqualTo(1));
         }
 
         [Test]

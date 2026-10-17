@@ -8,228 +8,241 @@ using UnityEngine;
 
 namespace StrategyDemo.Tests.EditMode
 {
-    /// <summary>Soldier production rules: instant and unlimited (R3), only listed units (R5), spawn point and fallback (R6, T5).</summary>
+    /// <summary>
+    /// Soldier production rules: instant and unlimited (R3), only listed units (R5), always on the Barracks' spawn cell,
+    /// from where the soldier walks to the nearest free cell (R6, T5), and refused while no free cell is reachable.
+    /// </summary>
     public class UnitProducerTests
     {
         private const int Width = 10;
         private const int Height = 8;
-        // Barracks is 3×2 and spawns below the middle of its bottom row (the shipped asset; see M4AssetTests).
-        private static readonly Vector2Int BarracksFootprint = new Vector2Int(3, 2);
-        private static readonly Vector2Int BarracksSpawnOffset = new Vector2Int(1, -1);
+        // The shipped Barracks is 3×3; placed at (3, 3) its bottom-middle spawn cell is (4, 2).
+        private static readonly Vector2Int BarracksFootprint = new Vector2Int(3, 3);
+        private static readonly Vector2Int BarracksOrigin = new Vector2Int(3, 3);
+        private static readonly Vector2Int SpawnCell = new Vector2Int(4, 2);
 
-        private TestBoard _board;
-        private GridMap _grid;
-        private OccupantRegistry _registry;
-        private RecordingUnitFactory _factory;
+        private CombatWorld _world;
+        private TestUnitFactory _factory;
         private UnitProducer _producer;
         private UnitDefinition _soldier;
-        private BuildingDefinition _barracks;
-        private BuildingDefinition _powerPlant;
-        private CellReservations _reservations;
+        private BuildingDefinition _barracksDefinition;
+        private Building _barracks;
 
         [SetUp]
         public void CreateProducer()
         {
-            _board = new TestBoard(Vector3.zero, Width, Height);
-            _soldier = _board.Unit("Soldier1", damage: 10);
-            _barracks = _board.Producer("Barracks", BarracksFootprint, BarracksSpawnOffset, _soldier);
-            _powerPlant = _board.Definition("PowerPlant", new Vector2Int(2, 2));
-            _grid = new GridMap(Width, Height);
-            _registry = new OccupantRegistry();
-            _factory = new RecordingUnitFactory();
-            _reservations = new CellReservations(Width, Height);
-            _producer = new UnitProducer(_grid, _registry, _reservations, _factory);
+            _world = new CombatWorld(Width, Height);
+            _soldier = _world.Board.Unit("Soldier1", damage: 10);
+            _barracksDefinition = _world.Board.Producer("Barracks", BarracksFootprint, _soldier);
+            _factory = new TestUnitFactory(_world.Board);
+            _producer = new UnitProducer(_world.Grid, _world.Registry, _factory, _world.Movement);
+            _barracks = _world.Place(_barracksDefinition, BarracksOrigin, SpawnCell);
         }
 
         [TearDown]
-        public void DestroyBoard()
+        public void DestroyWorld()
         {
-            _board.Dispose();
+            _factory.Dispose();
+            _world.Dispose();
         }
 
         [Test]
         public void Constructor_NullArgument_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(null, _registry, _reservations, _factory));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, null, _reservations, _factory));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, _registry, null, _factory));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_grid, _registry, _reservations, null));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(null, _world.Registry, _factory, _world.Movement));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, null, _factory, _world.Movement));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, _world.Registry, null, _world.Movement));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, _world.Registry, _factory, null));
         }
 
         [Test]
-        public void TryProduce_FreeSpawnCell_SpawnsBelowBottomMiddleOfBuilding()
+        public void TryProduce_FreeBoard_SoldierAppearsOnSpawnCellAndHoldsIt()
         {
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
-
-            bool produced = _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
+            bool produced = _producer.TryProduce(_barracks, _soldier, out Unit unit);
 
             Assert.That(produced, Is.True);
-            Assert.That(cell, Is.EqualTo(new Vector2Int(4, 2)));
-            Assert.That(_factory.Created, Has.Count.EqualTo(1));
-            Assert.That(_factory.Created[0].Cell, Is.EqualTo(cell));
+            Assert.That(unit.Origin, Is.EqualTo(SpawnCell));
+            Assert.That(_world.Grid.GetOccupant(SpawnCell), Is.EqualTo(unit.OccupantId));
+            Assert.That(_world.IsRegistered(unit), Is.True);
         }
 
         [Test]
-        public void TryProduce_Success_OccupiesCellAndRegistersSoldierUnderThatId()
+        public void TryProduce_Success_SoldierWalksOffAndSpawnCellClears()
         {
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
+            _producer.TryProduce(_barracks, _soldier, out Unit unit);
 
-            _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
+            _world.RunUntil(() => !_world.Movement.IsMoving(unit), "the soldier has stepped aside");
 
-            int id = _grid.GetOccupant(cell);
-            Assert.That(id, Is.Not.EqualTo(GridMap.EmptyId));
-            Assert.That(_registry.TryGet(id, out IBoardOccupant soldier), Is.True);
-            Assert.That(soldier.Origin, Is.EqualTo(cell));
+            Assert.That(unit.Origin, Is.Not.EqualTo(SpawnCell));
+            Assert.That(GridDistance.Chebyshev(unit.Origin, SpawnCell), Is.EqualTo(1), "The nearest free cell is next to the spawn cell.");
+            Assert.That(_world.Grid.GetOccupant(SpawnCell), Is.EqualTo(GridMap.EmptyId));
+            Assert.That(_world.Reservations.OwnerOf(unit.Origin), Is.EqualTo(unit.OccupantId));
+            Assert.That(_world.Reservations.OwnerOf(SpawnCell), Is.EqualTo(_barracks.OccupantId), "The spawn cell stays the Barracks'.");
         }
 
         [Test]
-        public void TryProduce_ManyTimes_NeverStacksTwoSoldiersOnOneCell()
+        public void TryProduce_ManyInOneFrame_AllAppearOnSpawnCellThenStandOnDistinctCells()
         {
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
-            var cells = new HashSet<Vector2Int>();
-
+            // Unlimited and instant (R3): ten clicks before a single frame has passed.
+            var units = new List<Unit>();
             for (int i = 0; i < 10; i++)
             {
-                Assert.That(_producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell), Is.True);
-                Assert.That(cells.Add(cell), Is.True, $"Soldier {i} landed on an occupied cell {cell}.");
+                Assert.That(_producer.TryProduce(_barracks, _soldier, out Unit unit), Is.True, $"soldier {i}");
+                Assert.That(unit.Origin, Is.EqualTo(SpawnCell), $"soldier {i} appears on the spawn cell");
+                units.Add(unit);
+            }
+
+            _world.RunUntil(() => _world.Movement.MovingCount == 0, "every soldier has stepped aside");
+
+            var cells = new HashSet<Vector2Int>();
+            foreach (Unit unit in units)
+            {
+                Assert.That(cells.Add(unit.Origin), Is.True, $"{unit.name} shares {unit.Origin}.");
+                Assert.That(unit.Origin, Is.Not.EqualTo(SpawnCell));
+                Assert.That(_world.Grid.GetOccupant(unit.Origin), Is.EqualTo(unit.OccupantId), $"{unit.name} holds its cell.");
             }
         }
 
         [Test]
-        public void TryProduce_SpawnCellTaken_UsesNearestFreeCell()
+        public void TryProduce_WhileFirstStillOnSpawnCell_SecondHoldsNoCellUntilItLeaves()
         {
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
-            _grid.Occupy(new Vector2Int(4, 2), Vector2Int.one, _registry.NextId());
+            _producer.TryProduce(_barracks, _soldier, out Unit first);
 
-            _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
+            _producer.TryProduce(_barracks, _soldier, out Unit second);
 
-            Assert.That(cell, Is.EqualTo(new Vector2Int(4, 1)));
+            Assert.That(_world.Grid.GetOccupant(SpawnCell), Is.EqualTo(first.OccupantId), "One grid cell, one holder.");
+            Assert.That(second.Origin, Is.EqualTo(SpawnCell));
+            _world.RunUntil(() => _world.Movement.MovingCount == 0, "both soldiers have stepped aside");
+            Assert.That(_world.Grid.GetOccupant(second.Origin), Is.EqualTo(second.OccupantId));
         }
 
         [Test]
-        public void TryProduce_BuildingOnBottomEdge_SpawnsNextToItOnTheBoard()
-        {
-            // The spawn cell (4, -1) is off the board; the nearest free cell beside the Barracks is used.
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 0));
-
-            bool produced = _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
-
-            Assert.That(produced, Is.True);
-            Assert.That(_grid.IsInside(cell), Is.True);
-            Assert.That(cell, Is.EqualTo(new Vector2Int(2, 0)).Or.EqualTo(new Vector2Int(6, 0)));
-        }
-
-        [Test]
-        public void TryProduce_RingAroundBuildingFullOfSoldiers_KeepsProducingBeyondThem()
+        public void TryProduce_RingAroundSpawnFullOfSoldiers_LooksPastThem()
         {
             // Soldiers can step aside, so the search looks past them; production never stalls while the board has room.
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
-            var cells = new HashSet<Vector2Int>();
-
-            for (int i = 0; i < 30; i++)
+            Vector2Int[] ring = { new Vector2Int(3, 2), new Vector2Int(5, 2), new Vector2Int(4, 1) };
+            foreach (Vector2Int cell in ring)
             {
-                Assert.That(_producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell), Is.True, $"soldier {i}");
-                cells.Add(cell);
+                _world.Spawn(cell, _soldier);
             }
 
-            Assert.That(cells, Has.Count.EqualTo(30));
-        }
-
-        [Test]
-        public void TryProduce_OtherBuildingsAroundSpawnCell_NeverSpawnsBehindThem()
-        {
-            // Bottom-edge Barracks with a 2×2 building left and right: the only way out is through the Barracks itself.
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 0));
-            _grid.Occupy(new Vector2Int(1, 0), new Vector2Int(2, 2), _registry.NextId());
-            _grid.Occupy(new Vector2Int(6, 0), new Vector2Int(2, 2), _registry.NextId());
-
-            _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
-
-            // Free cells at (0, 0) and (8, 0) are as close in steps but walled off by those buildings; above the Barracks is not.
-            Assert.That(cell.y, Is.EqualTo(2));
-            Assert.That(cell.x, Is.InRange(3, 5));
+            Assert.That(_producer.CanProduce(_barracks), Is.True);
+            Assert.That(_producer.TryProduce(_barracks, _soldier, out Unit unit), Is.True);
+            _world.RunUntil(() => !_world.Movement.IsMoving(unit), "the soldier has found a free cell");
+            Assert.That(ring, Has.No.Member(unit.Origin));
+            Assert.That(unit.Origin, Is.Not.EqualTo(SpawnCell));
         }
 
         [Test]
         public void TryProduce_BoardFull_ReturnsFalseAndChangesNothing()
         {
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
             FillEveryFreeCell();
-            int registered = _registry.Count;
+            int registered = _world.Registry.Count;
 
-            bool produced = _producer.TryProduce(_barracks, origin, _soldier, out _);
+            bool produced = _producer.TryProduce(_barracks, _soldier, out Unit unit);
 
             Assert.That(produced, Is.False);
+            Assert.That(unit, Is.Null);
             Assert.That(_factory.Created, Is.Empty);
-            Assert.That(_registry.Count, Is.EqualTo(registered));
+            Assert.That(_world.Registry.Count, Is.EqualTo(registered));
+            Assert.That(_world.Grid.GetOccupant(SpawnCell), Is.EqualTo(GridMap.EmptyId));
+        }
+
+        [Test]
+        public void CanProduce_BoardFull_IsFalse()
+        {
+            FillEveryFreeCell();
+
+            Assert.That(_producer.CanProduce(_barracks), Is.False);
+        }
+
+        [Test]
+        public void CanProduce_SpawnCellWalledInByOtherBuildings_IsFalse()
+        {
+            // A Barracks on the bottom row whose spawn cell has buildings left and right: the spawn cell is a dead end.
+            Building edgeBarracks = _world.Place(_barracksDefinition, new Vector2Int(6, 1), new Vector2Int(7, 0));
+            _world.Place(new Vector2Int(6, 0), Vector2Int.one, 10);
+            _world.Place(new Vector2Int(8, 0), Vector2Int.one, 10);
+
+            Assert.That(_producer.CanProduce(edgeBarracks), Is.False);
+            Assert.That(_producer.TryProduce(edgeBarracks, _soldier, out _), Is.False);
+        }
+
+        [Test]
+        public void CanProduce_LastFreeCellFreesUp_TurnsTrue()
+        {
+            FillEveryFreeCell();
+            Assert.That(_producer.CanProduce(_barracks), Is.False);
+
+            // One soldier-sized blocker next to the spawn cell goes away (e.g. destroyed).
+            Vector2Int freed = new Vector2Int(4, 1);
+            _world.Grid.Release(freed, Vector2Int.one, _world.Grid.GetOccupant(freed));
+
+            Assert.That(_producer.CanProduce(_barracks), Is.True);
+        }
+
+        [Test]
+        public void CanProduce_BuildingWithoutSpawnCell_IsFalse()
+        {
+            Building powerPlant = _world.Place(new Vector2Int(0, 6), new Vector2Int(2, 2), 50);
+
+            Assert.That(_producer.CanProduce(powerPlant), Is.False);
+        }
+
+        [Test]
+        public void CanProduce_Null_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => _producer.CanProduce(null));
         }
 
         [Test]
         public void TryProduce_BuildingThatProducesNothing_Throws()
         {
             // R5: the Power Plant has no production; the rule holds even if a caller bypasses the UI.
-            Assert.Throws<ArgumentException>(() => _producer.TryProduce(_powerPlant, Vector2Int.zero, _soldier, out _));
+            Building powerPlant = _world.Place(new Vector2Int(0, 6), new Vector2Int(2, 2), 50);
+
+            Assert.Throws<ArgumentException>(() => _producer.TryProduce(powerPlant, _soldier, out _));
             Assert.That(_factory.Created, Is.Empty);
         }
 
         [Test]
         public void TryProduce_UnitNotListedByBuilding_Throws()
         {
-            UnitDefinition other = _board.Unit("Other");
+            UnitDefinition other = _world.Board.Unit("Other");
 
-            Assert.Throws<ArgumentException>(() => _producer.TryProduce(_barracks, Vector2Int.zero, other, out _));
+            Assert.Throws<ArgumentException>(() => _producer.TryProduce(_barracks, other, out _));
         }
 
         [Test]
         public void TryProduce_NullArgument_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => _producer.TryProduce(null, Vector2Int.zero, _soldier, out _));
-            Assert.Throws<ArgumentNullException>(() => _producer.TryProduce(_barracks, Vector2Int.zero, null, out _));
+            Assert.Throws<ArgumentNullException>(() => _producer.TryProduce(null, _soldier, out _));
+            Assert.Throws<ArgumentNullException>(() => _producer.TryProduce(_barracks, null, out _));
         }
 
         [Test]
         public void TryProduce_FactoryThrows_GivesCellBackAndRethrows()
         {
-            var producer = new UnitProducer(_grid, _registry, _reservations, new ThrowingUnitFactory());
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
+            _factory.Fails = true;
+            int registered = _world.Registry.Count;
 
-            Assert.Throws<InvalidOperationException>(() => producer.TryProduce(_barracks, origin, _soldier, out _));
-            Assert.That(_grid.GetOccupant(new Vector2Int(4, 2)), Is.EqualTo(GridMap.EmptyId));
+            Assert.Throws<InvalidOperationException>(() => _producer.TryProduce(_barracks, _soldier, out _));
+            Assert.That(_world.Grid.GetOccupant(SpawnCell), Is.EqualTo(GridMap.EmptyId));
+            Assert.That(_world.Registry.Count, Is.EqualTo(registered));
+            Assert.That(_world.Movement.MovingCount, Is.Zero);
         }
 
         [Test]
-        public void TryProduce_Success_ReservesTheSpawnCell()
+        public void MoveOrder_ToTheSpawnCell_StopsBesideIt()
         {
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
+            // A spawn cell is the Barracks' reservation: a soldier ordered onto it stops on the nearest free cell instead.
+            Unit unit = _world.Spawn(new Vector2Int(0, 0), _soldier);
 
-            _producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell);
+            _world.Movement.MoveGroup(new IBoardOccupant[] { unit }, SpawnCell);
+            _world.RunUntil(() => !_world.Movement.IsMoving(unit), "the soldier has arrived");
 
-            Assert.That(_reservations.OwnerOf(cell), Is.EqualTo(_grid.GetOccupant(cell)), "A standing soldier reserves its own cell.");
-        }
-
-        [Test]
-        public void TryProduce_SpawnCellIsAnotherSoldiersStopCell_SpawnsBesideIt()
-        {
-            // A soldier walking to the empty spawn cell has reserved it; a new soldier must not appear there.
-            Vector2Int origin = PlaceBarracks(new Vector2Int(3, 3));
-            Vector2Int spawn = UnitProducer.SpawnCellOf(_barracks, origin);
-            _reservations.Reserve(spawn, _registry.NextId());
-
-            Assert.That(_producer.TryProduce(_barracks, origin, _soldier, out Vector2Int cell), Is.True);
-            Assert.That(cell, Is.Not.EqualTo(spawn));
-            Assert.That(_grid.GetOccupant(spawn), Is.EqualTo(GridMap.EmptyId));
-        }
-
-        [Test]
-        public void SpawnCellOf_Barracks_IsCellBelowBottomMiddle()
-        {
-            Assert.That(UnitProducer.SpawnCellOf(_barracks, new Vector2Int(5, 5)), Is.EqualTo(new Vector2Int(6, 4)));
-        }
-
-        private Vector2Int PlaceBarracks(Vector2Int origin)
-        {
-            _grid.Occupy(origin, BarracksFootprint, _registry.NextId());
-            return origin;
+            Assert.That(unit.Origin, Is.Not.EqualTo(SpawnCell));
+            Assert.That(GridDistance.Chebyshev(unit.Origin, SpawnCell), Is.EqualTo(1));
         }
 
         private void FillEveryFreeCell()
@@ -239,40 +252,15 @@ namespace StrategyDemo.Tests.EditMode
                 for (int x = 0; x < Width; x++)
                 {
                     var cell = new Vector2Int(x, y);
-                    if (_grid.GetOccupant(cell) == GridMap.EmptyId)
+                    if (_world.Grid.GetOccupant(cell) == GridMap.EmptyId)
                     {
-                        _grid.Occupy(cell, Vector2Int.one, _registry.NextId());
+                        // Walls, not soldiers: soldiers could be looked past. The spawn cell itself stays empty.
+                        if (cell != SpawnCell)
+                        {
+                            _world.Place(cell, Vector2Int.one, 10);
+                        }
                     }
                 }
-            }
-        }
-
-        /// <summary>Records what the producer asked to create instead of creating scene objects.</summary>
-        private sealed class RecordingUnitFactory : IUnitFactory
-        {
-            public List<(UnitDefinition Definition, Vector2Int Cell, int OccupantId)> Created { get; } =
-                new List<(UnitDefinition, Vector2Int, int)>();
-
-            public IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId)
-            {
-                Created.Add((definition, cell, occupantId));
-                return new FakeOccupant(occupantId, cell, Vector2Int.one, isMobile: true);
-            }
-
-            public void Release(Unit unit)
-            {
-            }
-        }
-
-        private sealed class ThrowingUnitFactory : IUnitFactory
-        {
-            public IBoardOccupant Create(UnitDefinition definition, Vector2Int cell, int occupantId)
-            {
-                throw new InvalidOperationException("Simulated failure while creating the soldier.");
-            }
-
-            public void Release(Unit unit)
-            {
             }
         }
     }

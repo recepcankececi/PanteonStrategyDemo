@@ -11,9 +11,10 @@ namespace StrategyDemo.UI
 {
     /// <summary>
     /// Information panel (I3, R4, R5): image, name, current/max HP (live) and footprint of the selected building or
-    /// soldier. A building that produces soldiers also lists them; clicking one produces it instantly (R3).
-    /// Buildings without producible units (Power Plant) show no production section at all. Several selected soldiers
-    /// show as "N soldiers selected" with the first one's image.
+    /// soldier. A building that produces soldiers also lists them; clicking one produces it instantly (R3). While no
+    /// new soldier would find a free cell, the rows are disabled and a message says why. Buildings without producible
+    /// units (Power Plant) show no production section at all. Several selected soldiers show as "N soldiers selected"
+    /// with the first one's image.
     /// </summary>
     /// <remarks>
     /// Production rows come from an <see cref="ObjectPool{T}"/>: they are rebound on every selection change
@@ -21,7 +22,7 @@ namespace StrategyDemo.UI
     /// </remarks>
     public sealed class InfoPanel : MonoBehaviour
     {
-        private const string NoFreeCellMessage = "No free cell on the board.";
+        private const string NoFreeCellMessage = "No free cell for a new soldier.";
         private const string GroupHeaderFormat = "{0} soldiers selected";
 
         [SerializeField, Tooltip("Shown while nothing is selected.")] private GameObject _emptyState;
@@ -34,7 +35,7 @@ namespace StrategyDemo.UI
         [SerializeField, Tooltip("Hidden for buildings that produce nothing (R5).")] private GameObject _productionSection;
         [SerializeField, Tooltip("Layout parent of the production rows.")] private Transform _unitList;
         [SerializeField] private UnitProductionItemView _unitItemPrefab;
-        [SerializeField, Tooltip("Feedback when production fails, e.g. the board is full.")] private TMP_Text _statusLabel;
+        [SerializeField, Tooltip("Says why production is unavailable, e.g. the board is full.")] private TMP_Text _statusLabel;
 
         private readonly List<UnitProductionItemView> _rows = new List<UnitProductionItemView>();
         private ObjectPool<UnitProductionItemView> _rowPool;
@@ -44,6 +45,9 @@ namespace StrategyDemo.UI
         // Health shown in the HP label, followed live while its object stays selected.
         private Health _shownHealth;
         private Action _showHealthHandler;
+        // Producing building shown, whose buttons follow whether it can produce; null for anything else.
+        private Building _shownProducer;
+        private bool _canProduce;
 
         /// <summary>Production rows currently shown, top to bottom.</summary>
         internal IReadOnlyList<UnitProductionItemView> Rows => _rows;
@@ -82,6 +86,7 @@ namespace StrategyDemo.UI
         {
             ReleaseRows();
             UnfollowHealth();
+            _shownProducer = null;
             _statusLabel.text = string.Empty;
 
             IBoardOccupant selected = _selection.Selected;
@@ -99,7 +104,7 @@ namespace StrategyDemo.UI
             switch (selected)
             {
                 case Building building:
-                    ShowBuilding(building.Definition);
+                    ShowBuilding(building);
                     FollowHealth(building.Health);
                     break;
                 case Unit unit:
@@ -117,22 +122,66 @@ namespace StrategyDemo.UI
             }
         }
 
-        private void ShowBuilding(BuildingDefinition building)
+        private void ShowBuilding(Building building)
         {
-            ShowCommon(building.Sprite, building.DisplayName, building.Footprint);
+            BuildingDefinition definition = building.Definition;
+            ShowCommon(definition.Sprite, definition.DisplayName, definition.Footprint);
             _damageLabel.gameObject.SetActive(false);
 
             // R5: no production section at all, not an empty one, for buildings that produce nothing.
-            _productionSection.SetActive(building.CanProduceUnits);
-            for (int i = 0; i < building.ProducibleUnits.Count; i++)
+            _productionSection.SetActive(definition.CanProduceUnits);
+            for (int i = 0; i < definition.ProducibleUnits.Count; i++)
             {
                 UnitProductionItemView row = _rowPool.Get();
                 // Tracked before binding: if Bind throws on bad data, the next refresh still returns the row to the pool.
                 _rows.Add(row);
-                row.Bind(building.ProducibleUnits[i]);
+                row.Bind(definition.ProducibleUnits[i]);
                 // Pooled rows come back in any order; re-append so the list follows the definition's order.
                 row.transform.SetAsLastSibling();
             }
+
+            if (definition.CanProduceUnits)
+            {
+                _shownProducer = building;
+                ShowProductionAvailability(_producer.CanProduce(building));
+            }
+        }
+
+        /// <summary>
+        /// Follows whether the shown building can produce. Polled, not event-driven: it depends on the grid and on the
+        /// reservations, and reservations raise no event. Normally the search stops at a free cell next to the spawn
+        /// cell; when production is impossible it walks the whole reachable area, at worst one pass over the whole
+        /// board per frame. It allocates nothing and runs only while a producer is selected.
+        /// </summary>
+        private void Update()
+        {
+            FollowProductionAvailability();
+        }
+
+        /// <summary>One poll of <see cref="Update"/>; internal so EditMode tests can run it without the player loop.</summary>
+        internal void FollowProductionAvailability()
+        {
+            if (_shownProducer == null)
+            {
+                return;
+            }
+
+            bool canProduce = _producer.CanProduce(_shownProducer);
+            if (canProduce != _canProduce)
+            {
+                ShowProductionAvailability(canProduce);
+            }
+        }
+
+        private void ShowProductionAvailability(bool canProduce)
+        {
+            _canProduce = canProduce;
+            for (int i = 0; i < _rows.Count; i++)
+            {
+                _rows[i].SetInteractable(canProduce);
+            }
+
+            _statusLabel.text = canProduce ? string.Empty : NoFreeCellMessage;
         }
 
         private void ShowUnit(UnitDefinition unit)
@@ -205,8 +254,10 @@ namespace StrategyDemo.UI
                 return;
             }
 
-            bool produced = _producer.TryProduce(building.Definition, building.Origin, unit, out _);
-            _statusLabel.text = produced ? string.Empty : NoFreeCellMessage;
+            // The buttons are disabled while production is impossible; the result is shown anyway, in case the board
+            // filled up after the last poll.
+            _producer.TryProduce(building, unit, out _);
+            ShowProductionAvailability(_producer.CanProduce(building));
         }
 
         private void OnEnable()

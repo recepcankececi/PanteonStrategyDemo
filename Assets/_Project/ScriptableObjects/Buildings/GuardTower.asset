@@ -17,4 +17,3 @@ MonoBehaviour:
   _footprint: {x: 1, y: 1}
   _maxHealth: 120
   _producibleUnits: []
-  _spawnOffset: {x: 0, y: 0}

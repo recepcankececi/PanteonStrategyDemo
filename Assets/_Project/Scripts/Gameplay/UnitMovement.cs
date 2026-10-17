@@ -17,7 +17,8 @@ namespace StrategyDemo.Gameplay
     /// <item>An unreachable goal (e.g. a building's cell, or a walled-off pocket) leads to the reachable cell closest
     /// to it, so right-clicking a building walks the soldier up to it.</item>
     /// <item>Every soldier reserves the cell it will stop on (<see cref="CellReservations"/>); a cell already
-    /// reserved is replaced by the nearest free one (BFS), so a group spreads around its target.</item>
+    /// reserved is replaced by the nearest free one (BFS), so a group spreads around its target. A Barracks reserves its
+    /// spawn cell for good, so soldiers walk through it but never stop on it.</item>
     /// <item>A soldier holds a grid cell only where its centre is: <see cref="Unit.Origin"/> follows the centre (it
     /// changes at the midpoint between two cells), and the grid cell follows when that cell is free. While it walks
     /// through a cell another soldier holds, it holds no cell at all. So every grid cell a soldier holds is one it
@@ -50,7 +51,7 @@ namespace StrategyDemo.Gameplay
 
         /// <param name="grid">Board occupancy; soldiers' cells are moved in it as they walk.</param>
         /// <param name="occupants">Tells soldiers (walkable) from buildings (walls).</param>
-        /// <param name="reservations">Stop cells of all soldiers.</param>
+        /// <param name="reservations">Stop cells of all soldiers and spawn cells of all Barracks: nobody else stops there.</param>
         /// <param name="gridView">Converts cells to world positions.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
         public UnitMovement(GridMap grid, OccupantRegistry occupants, CellReservations reservations, GridView gridView)
@@ -114,6 +115,36 @@ namespace StrategyDemo.Gameplay
                     Plan(order);
                 }
             }
+        }
+
+        /// <summary>
+        /// True when a soldier standing on <paramref name="cell"/> could reach a cell it may stop on, by the same search
+        /// <see cref="StepAside"/> uses: production asks this before putting a soldier on a spawn cell.
+        /// </summary>
+        public bool HasStopCellNear(Vector2Int cell)
+        {
+            return _grid.IsInside(cell) && _stopCellSearch.TryFindNearest(cell, _isSoldier, _canStopAt, out _);
+        }
+
+        /// <summary>
+        /// Sends <paramref name="unit"/> to the nearest cell it may stop on, e.g. off the spawn cell it was just produced
+        /// on: a spawn cell is reserved by its building, so no soldier ever stops there. A soldier already free to stop
+        /// where it stands stays there.
+        /// </summary>
+        /// <exception cref="ArgumentNullException"><paramref name="unit"/> is null.</exception>
+        public void StepAside(Unit unit)
+        {
+            if (unit == null)
+            {
+                throw new ArgumentNullException(nameof(unit));
+            }
+
+            _reservations.Release(unit.OccupantId);
+            MoveOrder order = FindOrder(unit) ?? StartOrder(unit);
+            order.Target = null;
+            // A goal of its own cell: Plan keeps it when the soldier may stop there, else finds the nearest free cell.
+            order.Goal = BodyCell(unit);
+            Plan(order);
         }
 
         /// <summary>
@@ -269,8 +300,9 @@ namespace StrategyDemo.Gameplay
         {
             MoveOrder order = _orderPool.Get();
             order.Unit = unit;
-            // A soldier without an order stands still and holds the cell it stands on.
-            order.HoldsCell = true;
+            // A soldier without an order holds the cell it stands on, unless it was just produced onto a spawn cell
+            // another soldier is still walking out of; then it holds nothing until that one has left.
+            order.HoldsCell = _grid.GetOccupant(unit.Origin) == unit.OccupantId;
             order.HeldCell = unit.Origin;
             _orders.Add(order);
             return order;

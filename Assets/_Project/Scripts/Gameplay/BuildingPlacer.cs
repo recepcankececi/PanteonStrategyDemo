@@ -11,32 +11,45 @@ namespace StrategyDemo.Gameplay
     /// edge case is tested without a scene. Input decides where the candidate is; the ghost draws it.
     /// </summary>
     /// <remarks>
-    /// States: Idle (no <see cref="Definition"/>) → Placing without a candidate (pointer not on the board yet)
+    /// <para>A spot is valid when the footprint is on the board and free, covers no other building's spawn cell, and a
+    /// building that produces soldiers also finds its own spawn cell (<see cref="SpawnSides"/>): on the board, not under
+    /// a building and not reserved. The spawn cell is chosen here, once, and becomes the building's permanent
+    /// reservation in <see cref="CellReservations"/>: no soldier ever stops on it and no building is ever placed on it,
+    /// yet soldiers still walk through it.</para>
+    /// <para>States: Idle (no <see cref="Definition"/>) → Placing without a candidate (pointer not on the board yet)
     /// → Placing with a candidate (ghost visible). Placing a building ends the mode unless the player keeps
-    /// placing; cancelling always ends it. Placement is unlimited and instant (R3).
+    /// placing; cancelling always ends it. Placement is unlimited and instant (R3).</para>
     /// </remarks>
     public sealed class BuildingPlacer
     {
         private readonly GridMap _grid;
         private readonly OccupantRegistry _occupants;
+        private readonly CellReservations _reservations;
         private readonly IBuildingFactory _factory;
+        // Cached once: converting a method group to a delegate on every call would allocate.
+        private readonly Predicate<Vector2Int> _isUsableSpawnCell;
+        // True while TryPlace writes the new building into the board; grid events it causes itself are ignored.
+        private bool _isCommitting;
 
         /// <param name="grid">Board occupancy; placed buildings are written into it.</param>
         /// <param name="occupants">Hands out ids and records every placed building, so its cells lead back to it.</param>
+        /// <param name="reservations">Stop cells of soldiers and spawn cells of buildings; a producer reserves its spawn cell here.</param>
         /// <param name="factory">Creates the scene object.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-        public BuildingPlacer(GridMap grid, OccupantRegistry occupants, IBuildingFactory factory)
+        public BuildingPlacer(GridMap grid, OccupantRegistry occupants, CellReservations reservations, IBuildingFactory factory)
         {
             _grid = grid ?? throw new ArgumentNullException(nameof(grid));
             _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
+            _reservations = reservations ?? throw new ArgumentNullException(nameof(reservations));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            _isUsableSpawnCell = IsUsableSpawnCell;
             // Cells change under a still pointer too (a building destroyed, a soldier walking in): keep the preview's
             // colour true. Both live as long as the game; nothing to unsubscribe from.
             _grid.AreaChanged += HandleAreaChanged;
         }
 
         /// <summary>
-        /// Raised whenever anything observable changes (mode, building, candidate cell or validity).
+        /// Raised whenever anything observable changes (mode, building, candidate cell, validity or spawn cell).
         /// Listeners read the properties; one event keeps the ghost unable to miss a combination.
         /// </summary>
         public event Action Changed;
@@ -53,8 +66,14 @@ namespace StrategyDemo.Gameplay
         /// <summary>Bottom-left cell of the preview. Meaningful only while <see cref="HasCandidate"/>.</summary>
         public Vector2Int CandidateOrigin { get; private set; }
 
-        /// <summary>True when the preview's whole footprint is on the board and free.</summary>
+        /// <summary>True when the building can be placed at the preview (see the class remarks).</summary>
         public bool IsCandidateValid { get; private set; }
+
+        /// <summary>True when the preview is valid and its building produces soldiers: it has a spawn cell to show.</summary>
+        public bool CandidateHasSpawnCell { get; private set; }
+
+        /// <summary>Spawn cell the building would take. Meaningful only while <see cref="CandidateHasSpawnCell"/>.</summary>
+        public Vector2Int CandidateSpawnCell { get; private set; }
 
         /// <summary>
         /// Starts placing <paramref name="definition"/>. While already placing, switches to it (the menu was
@@ -64,8 +83,7 @@ namespace StrategyDemo.Gameplay
         public void Begin(BuildingDefinition definition)
         {
             Definition = definition != null ? definition : throw new ArgumentNullException(nameof(definition));
-            HasCandidate = false;
-            IsCandidateValid = false;
+            ClearCandidateState();
             Changed?.Invoke();
         }
 
@@ -80,7 +98,7 @@ namespace StrategyDemo.Gameplay
 
             HasCandidate = true;
             CandidateOrigin = origin;
-            IsCandidateValid = _grid.IsAreaFree(origin, Definition.Footprint);
+            Evaluate();
             Changed?.Invoke();
         }
 
@@ -92,16 +110,15 @@ namespace StrategyDemo.Gameplay
                 return;
             }
 
-            HasCandidate = false;
-            IsCandidateValid = false;
+            ClearCandidateState();
             Changed?.Invoke();
         }
 
         /// <summary>
-        /// Places the building at the candidate when it is valid: occupies the grid, creates the scene
-        /// object and registers it. Afterwards placement ends, unless <paramref name="keepPlacing"/> is true (Shift held).
+        /// Places the building at the candidate when it is valid: occupies the grid, creates the scene object, registers
+        /// it and reserves its spawn cell. Afterwards placement ends, unless <paramref name="keepPlacing"/> is true (Shift held).
         /// </summary>
-        /// <returns>True when a building was placed; false when not placing, no candidate, or the spot is not free.</returns>
+        /// <returns>True when a building was placed; false when not placing, no candidate, or the spot is not valid.</returns>
         /// <remarks>If the factory throws, the grid is restored and the exception is passed on.</remarks>
         public bool TryPlace(bool keepPlacing)
         {
@@ -110,33 +127,51 @@ namespace StrategyDemo.Gameplay
                 return false;
             }
 
-            BuildingDefinition placed = Definition;
-            // Validity is cached per cell; re-check, because the grid may have changed while the pointer stood
-            // still (a building may have been destroyed). Occupy would throw on a stale "valid".
-            if (!_grid.IsAreaFree(CandidateOrigin, placed.Footprint))
+            // Validity is cached; evaluate again, because the board may have changed while the pointer stood still
+            // (a building destroyed, a soldier reserving the spawn cell). Occupy would throw on a stale "valid".
+            if (!RefreshValidity())
             {
-                SetValidity(false);
                 return false;
             }
 
+            BuildingDefinition placed = Definition;
+            bool hasSpawnCell = CandidateHasSpawnCell;
+            Vector2Int spawnCell = CandidateSpawnCell;
             int occupantId = _occupants.NextId();
-            // Grid first: it is the source of truth. If the scene object cannot be created, give the cells back,
-            // or the spot would stay blocked forever with nothing standing on it.
-            _grid.Occupy(CandidateOrigin, placed.Footprint, occupantId);
+            // Occupy raises AreaChanged, which would re-evaluate the candidate halfway through placing (the building not
+            // yet registered, its spawn cell not yet reserved). Ignore it; the state is evaluated once at the end.
+            _isCommitting = true;
             try
             {
-                _occupants.Add(_factory.Create(placed, CandidateOrigin, occupantId));
+                // Grid first: it is the source of truth. If anything below fails, give everything back, or the spot
+                // would stay blocked forever with nothing standing on it.
+                _grid.Occupy(CandidateOrigin, placed.Footprint, occupantId);
+                try
+                {
+                    if (hasSpawnCell)
+                    {
+                        // The building's one reservation, for its whole life; Building.LeaveBoard gives it back.
+                        _reservations.Reserve(spawnCell, occupantId);
+                    }
+
+                    _occupants.Add(_factory.Create(placed, CandidateOrigin, occupantId, hasSpawnCell ? spawnCell : (Vector2Int?)null));
+                }
+                catch
+                {
+                    _reservations.Release(occupantId);
+                    _grid.Release(CandidateOrigin, placed.Footprint, occupantId);
+                    throw;
+                }
             }
-            catch
+            finally
             {
-                _grid.Release(CandidateOrigin, placed.Footprint, occupantId);
-                throw;
+                _isCommitting = false;
             }
 
             if (keepPlacing)
             {
                 // The building now stands under the preview, so the same spot has become invalid.
-                IsCandidateValid = _grid.IsAreaFree(CandidateOrigin, placed.Footprint);
+                Evaluate();
             }
             else
             {
@@ -161,26 +196,100 @@ namespace StrategyDemo.Gameplay
 
         private void HandleAreaChanged(RectInt area)
         {
-            if (HasCandidate && area.Overlaps(new RectInt(CandidateOrigin, Definition.Footprint)))
+            // Any change, not only one on the footprint: a spawn side may have been built on or freed. Evaluating is a
+            // footprint scan plus four cells.
+            if (HasCandidate && !_isCommitting)
             {
-                SetValidity(_grid.IsAreaFree(CandidateOrigin, Definition.Footprint));
+                RefreshValidity();
             }
         }
 
-        private void SetValidity(bool isValid)
+        /// <summary>Evaluates the candidate again and notifies listeners if the result changed. Returns its validity.</summary>
+        private bool RefreshValidity()
         {
-            if (IsCandidateValid != isValid)
+            bool wasValid = IsCandidateValid;
+            bool hadSpawnCell = CandidateHasSpawnCell;
+            Vector2Int oldSpawnCell = CandidateSpawnCell;
+            Evaluate();
+            if (wasValid != IsCandidateValid || hadSpawnCell != CandidateHasSpawnCell || oldSpawnCell != CandidateSpawnCell)
             {
-                IsCandidateValid = isValid;
                 Changed?.Invoke();
             }
+
+            return IsCandidateValid;
+        }
+
+        /// <summary>Sets the validity and spawn cell of the current candidate.</summary>
+        private void Evaluate()
+        {
+            Vector2Int footprint = Definition.Footprint;
+            CandidateHasSpawnCell = false;
+            CandidateSpawnCell = default;
+            if (!_grid.IsAreaFree(CandidateOrigin, footprint) || CoversSpawnCell(CandidateOrigin, footprint))
+            {
+                IsCandidateValid = false;
+                return;
+            }
+
+            if (!Definition.CanProduceUnits)
+            {
+                IsCandidateValid = true;
+                return;
+            }
+
+            // A producer without a spawn cell could never produce: such a spot is invalid, not silently useless.
+            CandidateHasSpawnCell = SpawnSides.TryChoose(CandidateOrigin, footprint, _isUsableSpawnCell, out Vector2Int spawnCell);
+            CandidateSpawnCell = spawnCell;
+            IsCandidateValid = CandidateHasSpawnCell;
+        }
+
+        private bool CoversSpawnCell(Vector2Int origin, Vector2Int footprint)
+        {
+            for (int y = origin.y; y < origin.y + footprint.y; y++)
+            {
+                for (int x = origin.x; x < origin.x + footprint.x; x++)
+                {
+                    // A soldier's stop cell may be built on (the soldier plans again); a building's spawn cell may not.
+                    int owner = _reservations.OwnerOf(new Vector2Int(x, y));
+                    if (owner != GridMap.EmptyId && !IsSoldier(owner))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsUsableSpawnCell(Vector2Int cell)
+        {
+            if (!_grid.IsInside(cell) || _reservations.OwnerOf(cell) != GridMap.EmptyId)
+            {
+                return false;
+            }
+
+            // A soldier walking through is fine, it walks on; a building there would block the spawn for good.
+            int occupant = _grid.GetOccupant(cell);
+            return occupant == GridMap.EmptyId || IsSoldier(occupant);
+        }
+
+        private bool IsSoldier(int occupantId)
+        {
+            return _occupants.TryGet(occupantId, out IBoardOccupant occupant) && occupant.IsMobile;
+        }
+
+        private void ClearCandidateState()
+        {
+            HasCandidate = false;
+            IsCandidateValid = false;
+            CandidateHasSpawnCell = false;
+            CandidateSpawnCell = default;
         }
 
         private void ResetToIdle()
         {
             Definition = null;
-            HasCandidate = false;
-            IsCandidateValid = false;
+            ClearCandidateState();
         }
     }
 }
