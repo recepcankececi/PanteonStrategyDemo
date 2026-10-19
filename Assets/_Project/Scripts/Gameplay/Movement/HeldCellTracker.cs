@@ -63,9 +63,7 @@ namespace StrategyDemo.Gameplay.Movement
         private bool UpdateGridCell(MoveOrder order)
         {
             Unit unit = order.Unit;
-            // The same cell as MovePlanner.BodyCell: where the soldier's centre is.
             Vector2Int body = _gridView.WorldToCell(unit.transform.position);
-            // The centre crossed into another cell, i.e. passed the midpoint between two cell centres.
             if (body != unit.Origin)
             {
                 unit.SetCell(body);

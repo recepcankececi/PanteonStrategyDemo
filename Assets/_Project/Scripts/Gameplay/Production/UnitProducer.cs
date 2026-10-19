@@ -27,21 +27,36 @@ namespace StrategyDemo.Gameplay.Production
     {
         private readonly GridMap _grid;
         private readonly OccupantRegistry _occupants;
+        private readonly CellReservations _reservations;
         private readonly IUnitFactory _factory;
         private readonly UnitMovement _movement;
 
         /// <param name="grid">Board occupancy; the new soldier occupies the spawn cell when it is free.</param>
         /// <param name="occupants">Registry that hands out ids and records the soldier.</param>
+        /// <param name="reservations">Stop and spawn cells; read only for <see cref="AvailabilityVersion"/>.</param>
         /// <param name="factory">Creates (or reuses) the soldier object.</param>
         /// <param name="movement">Walks the new soldier off the spawn cell.</param>
         /// <exception cref="ArgumentNullException">Any argument is null.</exception>
-        public UnitProducer(GridMap grid, OccupantRegistry occupants, IUnitFactory factory, UnitMovement movement)
+        public UnitProducer(GridMap grid, OccupantRegistry occupants, CellReservations reservations, IUnitFactory factory,
+            UnitMovement movement)
         {
             _grid = grid ?? throw new ArgumentNullException(nameof(grid));
             _occupants = occupants ?? throw new ArgumentNullException(nameof(occupants));
+            _reservations = reservations ?? throw new ArgumentNullException(nameof(reservations));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
         }
+
+        /// <summary>
+        /// Changes whenever something <see cref="CanProduce"/> reads may have changed: grid occupancy or reservations.
+        /// A view caches <see cref="CanProduce"/> and asks again only when this differs from the value it saw.
+        /// </summary>
+        /// <remarks>
+        /// The sum of two counters that only go up: any change to either changes it. The registry needs no counter:
+        /// <see cref="CanProduce"/> reads it only for ids found on the grid, so a registry change matters only together
+        /// with a grid change.
+        /// </remarks>
+        public int AvailabilityVersion => unchecked(_grid.Version + _reservations.Version);
 
         /// <summary>
         /// True when <paramref name="producer"/> can produce a soldier now: it has a spawn cell and a soldier there could

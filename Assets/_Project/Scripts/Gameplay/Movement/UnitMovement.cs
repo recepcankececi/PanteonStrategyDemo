@@ -29,10 +29,11 @@ namespace StrategyDemo.Gameplay.Movement
     /// soldiers in it: a building can never be placed on a soldier.</item>
     /// <item>A building placed on the remaining path or the stop cell triggers a new plan from where the soldier is.</item>
     /// <item>When every reachable cell is reserved (a pocket packed with soldiers), the soldier waits where it is and
-    /// plans again every frame until one frees up. Rare, and cheap on this board, so no "something changed" flag.</item>
-    /// <item>An approach (<see cref="Approach(Unit, IBoardOccupant)"/>) stops on the first cell of the path within
-    /// attack range of the target; when that cell is reserved, on the nearest free cell within range; when no cell in
-    /// range is free, on the nearest free cell at all, where combat makes it wait and try again.</item>
+    /// plans again every frame until one frees up. Rare, and cheap on this board, so no "something changed" flag. Its
+    /// order stays open, but it is not walking (<see cref="IsWalking"/>), so it may still fire at a target in range.</item>
+    /// <item>An approach (<see cref="Approach(Unit, IBoardOccupant)"/>) stops on the nearest free cell within attack
+    /// range of the target (one multi-goal A* search); when no cell in range is free, on the nearest free cell at all,
+    /// where combat makes it wait and try again.</item>
     /// </list>
     /// </remarks>
     public sealed class UnitMovement
@@ -43,7 +44,10 @@ namespace StrategyDemo.Gameplay.Movement
         private readonly MoveStepper _stepper;
         private readonly HeldCellTracker _heldCells;
         private readonly ObjectPool<MoveOrder> _orderPool;
+        // The list is the update order (a stable, allocation-free loop); the dictionary finds a soldier's order in O(1),
+        // so per-frame questions like IsMoving do not scan the list. Both always hold the same orders.
         private readonly List<MoveOrder> _orders = new List<MoveOrder>();
+        private readonly Dictionary<int, MoveOrder> _orderByUnitId;
 
         /// <param name="grid">Board occupancy; soldiers' cells are moved in it as they walk.</param>
         /// <param name="occupants">Tells soldiers (walkable) from buildings (walls).</param>
@@ -69,15 +73,30 @@ namespace StrategyDemo.Gameplay.Movement
             _heldCells = new HeldCellTracker(grid, gridView);
             int cellCount = grid.Width * grid.Height;
             _orderPool = new ObjectPool<MoveOrder>(() => new MoveOrder(cellCount), null, order => order.Clear());
+            // At most one soldier per cell: sized once, so adding an order never grows (allocates) the table.
+            _orderByUnitId = new Dictionary<int, MoveOrder>(cellCount);
         }
 
         /// <summary>Soldiers with an unfinished move order.</summary>
         public int MovingCount => _orders.Count;
 
+        /// <summary>Cells the last path search examined; lets tests check that an approach does not flood the board.</summary>
+        internal int LastSearchExpandedCount => _planner.LastSearchExpandedCount;
+
         /// <summary>True while <paramref name="unit"/> has an unfinished move order.</summary>
         public bool IsMoving(Unit unit)
         {
             return FindOrder(unit) != null;
+        }
+
+        /// <summary>
+        /// True while <paramref name="unit"/> is on its way to the end of its path. False once it stands there, even
+        /// when its order stays open (it waits for a free stop cell, or for another soldier to leave its cell).
+        /// </summary>
+        public bool IsWalking(Unit unit)
+        {
+            MoveOrder order = FindOrder(unit);
+            return order != null && !order.HasArrived;
         }
 
         /// <summary>
@@ -240,8 +259,8 @@ namespace StrategyDemo.Gameplay.Movement
             if (order != null)
             {
                 _heldCells.ReleaseHeldCell(order);
-                _orders.Remove(order);
-                _orderPool.Release(order);
+                // A linear search, but once per death, not per frame.
+                RemoveOrderAt(_orders.IndexOf(order));
             }
             else if (_grid.IsInside(unit.Origin) && _grid.GetOccupant(unit.Origin) == unit.OccupantId)
             {
@@ -267,18 +286,14 @@ namespace StrategyDemo.Gameplay.Movement
                 _stepper.Advance(_orders[i], deltaTime);
             }
 
-            // Grid cells are updated after everyone moved.
             _heldCells.Settle(_orders);
 
             // Backwards, so removing an order (the last one moves into its slot) skips nobody.
             for (int i = _orders.Count - 1; i >= 0; i--)
             {
-                MoveOrder order = _orders[i];
-                if (IsComplete(order))
+                if (IsComplete(_orders[i]))
                 {
-                    _orders[i] = _orders[_orders.Count - 1];
-                    _orders.RemoveAt(_orders.Count - 1);
-                    _orderPool.Release(order);
+                    RemoveOrderAt(i);
                 }
             }
         }
@@ -292,7 +307,18 @@ namespace StrategyDemo.Gameplay.Movement
             order.HoldsCell = _grid.GetOccupant(unit.Origin) == unit.OccupantId;
             order.HeldCell = unit.Origin;
             _orders.Add(order);
+            _orderByUnitId.Add(unit.OccupantId, order);
             return order;
+        }
+
+        private void RemoveOrderAt(int index)
+        {
+            // Swap-remove: the order of the list does not matter, and nothing behind the slot has to shift.
+            MoveOrder order = _orders[index];
+            _orders[index] = _orders[_orders.Count - 1];
+            _orders.RemoveAt(_orders.Count - 1);
+            _orderByUnitId.Remove(order.Unit.OccupantId);
+            _orderPool.Release(order);
         }
 
         private void PlanApproach(Unit unit, IBoardOccupant target)
@@ -305,16 +331,9 @@ namespace StrategyDemo.Gameplay.Movement
 
         private MoveOrder FindOrder(Unit unit)
         {
-            // A loop over the few walking soldiers; no dictionary to keep in sync with the list.
-            for (int i = 0; i < _orders.Count; i++)
-            {
-                if (ReferenceEquals(_orders[i].Unit, unit))
-                {
-                    return _orders[i];
-                }
-            }
-
-            return null;
+            // Ids are never reused, and an order is dropped before its soldier goes back to the pool (id 0): the id alone
+            // identifies the soldier.
+            return _orderByUnitId.TryGetValue(unit.OccupantId, out MoveOrder order) ? order : null;
         }
 
         private static bool IsComplete(MoveOrder order)

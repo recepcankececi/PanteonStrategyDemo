@@ -231,6 +231,101 @@ namespace StrategyDemo.Tests.EditMode.Core
             });
         }
 
+        [TestCase(7, 3, 0)]
+        [TestCase(0, 3, 60)]
+        [TestCase(0, 0, 68)]
+        [TestCase(9, 7, 34)]
+        public void HeuristicToArea_IsOctileDistanceToNearestCell(int x, int y, int expected)
+        {
+            // Area: x 6..8, y 2..4.
+            Assert.That(Pathfinder.HeuristicToArea(V(x, y), new RectInt(6, 2, 3, 3)), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void TryFindPath_GoalArea_EndsOnItsNearestCell()
+        {
+            Assert.That(_pathfinder.TryFindPath(V(0, 3), new RectInt(6, 2, 3, 3), null, _path), Is.True);
+
+            Assert.That(_path[_path.Count - 1], Is.EqualTo(V(6, 3)));
+            Assert.That(Cost(_path), Is.EqualTo(60));
+        }
+
+        [Test]
+        public void TryFindPath_GoalAreaWithAcceptTest_EndsOnNearestAcceptedCell()
+        {
+            // The nearest cell is taken (e.g. another soldier's stop cell): the next cheapest one of the area is used.
+            Predicate<Vector2Int> notTheNearest = cell => cell != V(6, 3);
+
+            Assert.That(_pathfinder.TryFindPath(V(0, 3), new RectInt(6, 2, 3, 3), notTheNearest, _path), Is.True);
+
+            Vector2Int end = _path[_path.Count - 1];
+            Assert.That(end == V(6, 2) || end == V(6, 4), Is.True, $"Ended on {end}.");
+            Assert.That(Cost(_path), Is.EqualTo(64));
+        }
+
+        [Test]
+        public void TryFindPath_GoalAreaNothingAccepted_ReturnsFalseAndEndsNextToArea()
+        {
+            Assert.That(_pathfinder.TryFindPath(V(0, 3), new RectInt(6, 2, 3, 3), cell => false, _path), Is.False);
+
+            Assert.That(Pathfinder.HeuristicToArea(_path[_path.Count - 1], new RectInt(6, 2, 3, 3)), Is.Zero,
+                "The fallback is the closest cell, here one inside the area.");
+        }
+
+        [Test]
+        public void TryFindPath_GoalAreaReachesPastTheBoard_StillWorks()
+        {
+            Assert.That(_pathfinder.TryFindPath(V(0, 0), new RectInt(8, 6, 5, 5), null, _path), Is.True);
+
+            Assert.That(_path[_path.Count - 1], Is.EqualTo(V(8, 6)));
+        }
+
+        [Test]
+        public void TryFindPath_EmptyGoalArea_Throws()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => _pathfinder.TryFindPath(V(0, 0), new RectInt(3, 3, 0, 1), null, _path));
+        }
+
+        [Test]
+        public void TryFindPath_ApproachByRangeArea_ExaminesFarFewerCellsThanBlockedSingleGoal()
+        {
+            // The real board (24×16) and a 2×2 building at the far side. Before: the goal was one of the building's own
+            // (blocked) cells, which is never reached, so A* examined every reachable cell. After: every cell within
+            // range 1 is a goal, and the search ends at the first one.
+            var grid = new GridMap(24, 16);
+            var pathfinder = new Pathfinder(grid, id => id >= FirstSoldierId);
+            var footprintOrigin = V(20, 7);
+            var footprint = V(2, 2);
+            grid.Occupy(footprintOrigin, footprint, 1);
+            Vector2Int start = V(1, 8);
+
+            pathfinder.TryFindPath(start, GridDistance.ClosestCellInArea(footprintOrigin, footprint, start), _path);
+            int singleGoalCount = pathfinder.ExpandedCount;
+            bool reached = pathfinder.TryFindPath(start, GridDistance.WithinRange(footprintOrigin, footprint, 1), null, _path);
+            int areaCount = pathfinder.ExpandedCount;
+
+            Assert.That(singleGoalCount, Is.EqualTo(24 * 16 - 4), "Before: the whole board was flooded.");
+            Assert.That(reached, Is.True);
+            Assert.That(areaCount, Is.LessThan(singleGoalCount / 5), $"After: {areaCount} cells examined.");
+            Assert.That(_path[_path.Count - 1], Is.EqualTo(V(19, 8)));
+        }
+
+        [Test]
+        public void TryFindPath_GoalAreaAfterWarmUp_AllocatesNothing()
+        {
+            Predicate<Vector2Int> accept = cell => cell.y != 3;
+            _pathfinder.TryFindPath(V(0, 3), new RectInt(6, 2, 3, 3), accept, _path);
+
+            AllocationAssert.None(() =>
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    _pathfinder.TryFindPath(V(0, 3), new RectInt(6, 2, 3, 3), accept, _path);
+                    _pathfinder.TryFindPath(V(9, 7), new RectInt(0, 0, 2, 2), null, _path);
+                }
+            });
+        }
+
         private void Wall(Vector2Int origin, Vector2Int size)
         {
             _grid.Occupy(origin, size, _nextBuildingId++);

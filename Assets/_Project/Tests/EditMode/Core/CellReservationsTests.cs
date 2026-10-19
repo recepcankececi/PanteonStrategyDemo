@@ -161,5 +161,28 @@ namespace StrategyDemo.Tests.EditMode.Core
             Assert.That(_reservations.IsPermanent(new Vector2Int(2, 1)), Is.False);
             Assert.DoesNotThrow(() => _reservations.ReserveStopCell(new Vector2Int(2, 1), 8), "Soldiers may stop there again.");
         }
+
+        [Test]
+        public void Version_ChangesOnEveryReserveAndRelease_NotOnReadsOrNoOps()
+        {
+            int version = _reservations.Version;
+            _reservations.OwnerOf(new Vector2Int(1, 1));
+            Assert.That(_reservations.Release(7), Is.False);
+            Assert.That(_reservations.Version, Is.EqualTo(version), "Reads and releasing nothing change nothing.");
+
+            _reservations.ReserveStopCell(new Vector2Int(1, 1), 7);
+            Assert.That(_reservations.Version, Is.Not.EqualTo(version));
+            version = _reservations.Version;
+
+            _reservations.ReserveSpawnCell(new Vector2Int(2, 1), 8);
+            Assert.That(_reservations.Version, Is.Not.EqualTo(version));
+            version = _reservations.Version;
+
+            Assert.Throws<InvalidOperationException>(() => _reservations.ReserveStopCell(new Vector2Int(2, 1), 9));
+            Assert.That(_reservations.Version, Is.EqualTo(version), "A refused reservation is no change.");
+
+            _reservations.Release(7);
+            Assert.That(_reservations.Version, Is.Not.EqualTo(version));
+        }
     }
 }

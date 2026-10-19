@@ -80,7 +80,7 @@ namespace StrategyDemo.App
                 var movement = new UnitMovement(gridMap, occupants, reservations, _gridView);
                 _movementDriver.Init(movement);
                 var unitFactory = new UnitFactory(_unitPrefab, _unitsRoot, _unitPoolRoot, _gridView);
-                var unitProducer = new UnitProducer(gridMap, occupants, unitFactory, movement);
+                var unitProducer = new UnitProducer(gridMap, occupants, reservations, unitFactory, movement);
 
                 var selection = new SelectionService(gridMap, occupants);
                 var selectionInput = new SelectionInputHandler(selection, _gridView);

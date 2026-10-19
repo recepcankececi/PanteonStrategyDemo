@@ -37,6 +37,12 @@ namespace StrategyDemo.Core
         /// <summary>Raised after cells are occupied or released, with the affected area.</summary>
         public event Action<RectInt> AreaChanged;
 
+        /// <summary>
+        /// Goes up by one on every change. A reader that caches something computed from the grid compares it with the
+        /// value it saw instead of computing again every frame. Only equality matters, so wrapping around is harmless.
+        /// </summary>
+        public int Version { get; private set; }
+
         /// <summary>Number of columns.</summary>
         public int Width { get; }
 
@@ -143,6 +149,7 @@ namespace StrategyDemo.Core
                 }
             }
 
+            Version++;
             AreaChanged?.Invoke(new RectInt(origin, size));
         }
 

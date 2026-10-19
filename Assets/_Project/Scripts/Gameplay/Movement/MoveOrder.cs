@@ -21,8 +21,8 @@ namespace StrategyDemo.Gameplay.Movement
         public Unit Unit { get; set; }
 
         /// <summary>
-        /// Cell the player clicked; kept so a blocked path can be planned again towards it. For an approach, the
-        /// target's cell nearest the soldier, recomputed on every plan.
+        /// Cell the player clicked; kept so a blocked path can be planned again towards it. Unused by an approach,
+        /// which plans towards the cells in range of <see cref="Target"/>.
         /// </summary>
         public Vector2Int Goal { get; set; }
 

@@ -29,7 +29,6 @@ namespace StrategyDemo.Gameplay.Movement
             Unit unit = order.Unit;
             Vector3 position = unit.transform.position;
 
-            // A building placed on the way or on the stop cell, or no stop cell yet: plan again from here.
             if (!order.HasStopCell || !_planner.IsWalkable(order.Destination) || !IsNextCellWalkable(order))
             {
                 _planner.Replan(order);

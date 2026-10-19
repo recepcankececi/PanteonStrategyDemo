@@ -523,5 +523,131 @@ namespace StrategyDemo.Tests.EditMode.Gameplay.Combat
             AllocationAssert.None(() => _world.Run(4f));
             Assert.That(Combat.StateOf(a), Is.EqualTo(CombatState.Attacking), "The run covered chasing and attacking.");
         }
+
+        [Test]
+        public void Attack_FarBuilding_PlanDoesNotExamineTheWholeBoard()
+        {
+            Unit soldier = _world.Spawn(new Vector2Int(0, 0), _assault);
+            Building tower = _world.Place(new Vector2Int(8, 6), Vector2Int.one, 50);
+
+            Combat.Attack(new IBoardOccupant[] { soldier }, tower);
+
+            // The search ends at the first free cell in range instead of flooding towards the tower's blocked cell.
+            Assert.That(_world.Movement.LastSearchExpandedCount, Is.LessThan(Width * Height / 2));
+            Assert.That(_world.Reservations.TryGetCell(soldier.OccupantId, out Vector2Int stopCell), Is.True);
+            Assert.That(GridDistance.ToArea(stopCell, tower.Origin, tower.Footprint), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Attack_WalkingTargetWithEveryNeighbourReserved_NeverPicksTheTargetsOwnCell()
+        {
+            // A walking soldier reserves its destination, not the cell it stands in: that cell looks free.
+            Unit target = _world.Spawn(new Vector2Int(5, 4), _weakling);
+            _world.Movement.MoveGroup(new IBoardOccupant[] { target }, new Vector2Int(9, 7));
+            for (int y = 3; y <= 5; y++)
+            {
+                for (int x = 4; x <= 6; x++)
+                {
+                    var cell = new Vector2Int(x, y);
+                    if (cell != target.Origin)
+                    {
+                        _world.Reservations.ReserveStopCell(cell, _world.Registry.NextId());
+                    }
+                }
+            }
+
+            Unit attacker = _world.Spawn(new Vector2Int(0, 0), _assault);
+            Combat.Attack(new IBoardOccupant[] { attacker }, target);
+
+            Assert.That(_world.Reservations.TryGetCell(attacker.OccupantId, out Vector2Int stopCell), Is.True);
+            Assert.That(stopCell, Is.Not.EqualTo(new Vector2Int(5, 4)), "Never stops inside its target.");
+        }
+
+        [Test]
+        public void InRangeButNoCellToStopOn_StillHits()
+        {
+            // A 3×1 strip: a Barracks at x=0 owns the spawn cell x=1, the attacker stands on that spawn cell (it was just
+            // produced) and its target stands on x=2. Every reachable cell is reserved, so the attacker's move order can
+            // never complete; it is in range all the same and must fire.
+            using (var strip = new CombatWorld(3, 1))
+            {
+                Unit attacker = strip.Spawn(new Vector2Int(1, 0), _assault);
+                Unit target = strip.Spawn(new Vector2Int(2, 0), _weakling);
+                strip.Reservations.Release(attacker.OccupantId);
+                strip.Place(strip.Board.Definition("Barracks", Vector2Int.one), Vector2Int.zero, new Vector2Int(1, 0));
+
+                strip.Combat.Attack(new IBoardOccupant[] { attacker }, target);
+                strip.Step();
+
+                // Checked after one frame: once the target is gone its cell frees up and the order can complete.
+                Assert.That(strip.Movement.IsMoving(attacker), Is.True, "Its move order stays open: no cell to stop on.");
+                Assert.That(strip.IsRegistered(target), Is.False, "10 damage on 10 HP: the hit landed.");
+            }
+        }
+
+        [Test]
+        public void FiringWhileWaitingForStopCell_CellFreesUp_NoHitWhileWalkingToIt()
+        {
+            // A 4×1 strip: Barracks x=0 (spawn cell x=1), the attacker on the spawn cell, a blocker on x=2, the target
+            // building on x=3. The attacker fires from where it stands; once the blocker is gone it walks to x=2 and must
+            // not shoot on the way.
+            using (var strip = new CombatWorld(4, 1))
+            {
+                UnitDefinition rapid = strip.Board.Unit("Rapid", damage: 1, range: 3, interval: 0.05f);
+                Unit attacker = strip.Spawn(new Vector2Int(1, 0), rapid);
+                Unit blocker = strip.Spawn(new Vector2Int(2, 0), _weakling);
+                strip.Reservations.Release(attacker.OccupantId);
+                strip.Place(strip.Board.Definition("Barracks", Vector2Int.one), Vector2Int.zero, new Vector2Int(1, 0));
+                Building target = strip.Place(new Vector2Int(3, 0), Vector2Int.one, 1000);
+                strip.Combat.Attack(new IBoardOccupant[] { attacker }, target);
+                strip.RunUntil(() => target.Health.Current < 1000, "the waiting attacker fires");
+
+                strip.Despawner.Despawn(blocker);
+                bool walked = false;
+                for (int frame = 0; frame < MaxChaseFrames && !(walked && !strip.Movement.IsMoving(attacker)); frame++)
+                {
+                    int before = target.Health.Current;
+                    strip.Step();
+                    if (strip.Movement.IsWalking(attacker))
+                    {
+                        walked = true;
+                        Assert.That(target.Health.Current, Is.EqualTo(before), "A hit landed while walking.");
+                    }
+                }
+
+                Assert.That(walked, Is.True, "The attacker walked to the freed cell.");
+                Assert.That(attacker.Origin, Is.EqualTo(new Vector2Int(2, 0)));
+                int arrived = target.Health.Current;
+                strip.Run(0.2f);
+                Assert.That(target.Health.Current, Is.LessThan(arrived), "It fires again once it stands.");
+            }
+        }
+
+        [Test]
+        public void Tick_ThrowsAfterAKill_KilledTargetIsStillDespawned()
+        {
+            Building first = _world.Place(new Vector2Int(2, 2), Vector2Int.one, 10);
+            Building second = _world.Place(new Vector2Int(6, 2), Vector2Int.one, 10);
+            Unit killer = _world.Spawn(new Vector2Int(2, 1), _assault);
+            Unit other = _world.Spawn(new Vector2Int(6, 1), _assault);
+            Combat.Attack(new IBoardOccupant[] { killer }, first);
+            Combat.Attack(new IBoardOccupant[] { other }, second);
+            // The first hit (fatal) passes; the second one breaks an invariant halfway through the order loop.
+            int hits = 0;
+            Combat.HitLanded += (attacker, target) =>
+            {
+                if (++hits == 2)
+                {
+                    throw new InvalidOperationException("Broken invariant.");
+                }
+            };
+
+            Assert.Throws<InvalidOperationException>(() => _world.Step());
+
+            Assert.That(_world.IsRegistered(first), Is.False, "A dead building must not stay on the board.");
+            Assert.That(_world.Grid.GetOccupant(new Vector2Int(2, 2)), Is.EqualTo(GridMap.EmptyId));
+            Assert.That(Combat.StateOf(killer), Is.EqualTo(CombatState.Idle));
+            Assert.That(_world.IsRegistered(second), Is.True, "The hit that threw dealt no damage.");
+        }
     }
 }

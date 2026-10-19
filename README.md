@@ -53,7 +53,7 @@ There is no enemy faction: as the case allows, soldiers attack your own building
 | Pathfinding with A\* | Octile heuristic, binary-heap open list, no diagonal corner cutting | `Pathfinder`, `PathNodeHeap` |
 | All edge cases considered | Every case per system with the test that proves it, plus the few limits accepted on purpose | [`Docs/EdgeCases.md`](Docs/EdgeCases.md) |
 
-Paths above are relative to `Assets/_Project/`. Every logic rule in the table has EditMode tests (685 in total); how each edge case is handled, and which test proves it, is listed in [Docs/EdgeCases.md](Docs/EdgeCases.md).
+Paths above are relative to `Assets/_Project/`. Every logic rule in the table has EditMode tests (705 test cases: NUnit cases, parameterised ones included); how each edge case is handled, and which test proves it, is listed in [Docs/EdgeCases.md](Docs/EdgeCases.md).
 
 ## Architecture
 
@@ -86,15 +86,22 @@ Assets/_Project/Scripts/
 - **One assembly per module.** `Core` and `Data` reference nothing; `Gameplay` uses them; `UI` sits on top of
   `Gameplay`; only `App` sees everything. A test fails if a reference points the wrong way.
 - **Composition root.** `GameBootstrap` is the only place that creates services and wires them; read top to bottom
-  it is the start-up order. No singletons, no `Find*`, no static state; modules talk through constructor-injected
-  services, interfaces (`IDamageable`, `IDespawnable`, `IBuildingFactory`, ...) and C# events.
+  it is the start-up order. No singletons, no `Find*`, no static state; every dependency is passed in through a
+  constructor or `Init`. Where a second implementation exists or a test needs a fake, that dependency is an
+  interface (`IDamageable`, `IDespawnable`, `IAttackRule`, `IBuildingFactory`, `IUnitFactory`); the core services
+  (`UnitMovement`, `UnitCombat`, `OccupantDespawner`, `SelectionService`) are passed as concrete classes, since
+  each has exactly one implementation. Views follow the rules through C# events.
 - **Rules apart from views.** Placement, selection, movement and combat are plain C# classes ticked by thin
   `MonoBehaviour` drivers, so they are tested without a scene.
 - **Data-driven.** Names, sprites, footprints, HP, damage, range, attack interval, speed and the grid size live in
   ScriptableObjects. A new building is a new asset added to `BuildingCatalog`; no code changes.
 - **A\*.** 8-directional grid search with an octile heuristic and a binary heap; buildings are walls, soldiers are
   not (each soldier holds a temporary reservation on the cell it will stop on instead, and each Barracks a permanent
-  one on its spawn cell). An unreachable goal ends at the closest reachable cell. Buffers are reused, so a search allocates nothing after warm-up.
+  one on its spawn cell). An attack order searches for every cell within range at once (multi-goal A\*) and
+  stops at the first free one, so approaching a far building examines about as many cells as the path is long
+  (19 instead of the whole 380-cell board) while a free cell in range is reachable; when every cell in range is
+  taken it still searches the reachable board, as before. An unreachable goal ends at the closest reachable cell.
+  Buffers are reused, so a search allocates nothing after warm-up.
 - **Pooling.** Production Menu rows, Information Panel rows, soldiers, buildings, selection markers and combat
   effects all come from `ObjectPool<T>` and reset their state on release. The Production Menu keeps only the rows
   that fit on screen plus one, moves the row that scrolls out to the other end and rebinds it.
@@ -117,7 +124,7 @@ Assets/_Project/Scripts/
 Unity.exe -batchmode -quit -projectPath . -executeMethod StrategyDemo.EditorTools.BuildScript.BuildWindows -logFile Builds/build.log
 ```
 
-**Tests:** `Window > General > Test Runner > EditMode > Run All` (assembly `StrategyDemo.Tests.EditMode`, 685 tests).
+**Tests:** `Window > General > Test Runner > EditMode > Run All` (assembly `StrategyDemo.Tests.EditMode`, 705 test cases incl. parameterised).
 
 ## Art
 

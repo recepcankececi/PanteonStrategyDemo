@@ -32,5 +32,15 @@ namespace StrategyDemo.Core
         {
             return Chebyshev(from, ClosestCellInArea(areaOrigin, areaSize, from));
         }
+
+        /// <summary>
+        /// Every cell within <paramref name="range"/> of the area (its <see cref="ToArea"/> is at most
+        /// <paramref name="range"/>), the area itself included. With Chebyshev distance that set is exactly the area
+        /// grown by <paramref name="range"/> on every side; it may reach past the board's edges.
+        /// </summary>
+        public static RectInt WithinRange(Vector2Int areaOrigin, Vector2Int areaSize, int range)
+        {
+            return new RectInt(areaOrigin.x - range, areaOrigin.y - range, areaSize.x + 2 * range, areaSize.y + 2 * range);
+        }
     }
 }

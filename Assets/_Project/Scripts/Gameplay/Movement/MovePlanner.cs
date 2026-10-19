@@ -17,8 +17,8 @@ namespace StrategyDemo.Gameplay.Movement
     /// <item>A soldier may stop on a walkable cell nobody has reserved: not another soldier's stop cell, not a
     /// Barracks' spawn cell.</item>
     /// <item>A plain move stops at the end of its path when it may, else on the nearest cell it may stop on (BFS).</item>
-    /// <item>An approach stops on the first cell of its path within range of the target; else on the nearest free cell
-    /// in range; else on the nearest free cell at all.</item>
+    /// <item>An approach stops on the nearest free cell within range of the target, found by one multi-goal A*
+    /// search; when none is reachable, on the nearest free cell at all.</item>
     /// </list>
     /// </remarks>
     internal sealed class MovePlanner
@@ -32,9 +32,9 @@ namespace StrategyDemo.Gameplay.Movement
         // Cached once: converting a method group to a delegate on every call would allocate.
         private readonly Predicate<int> _isSoldier;
         private readonly Predicate<Vector2Int> _canStopAt;
-        private readonly Predicate<Vector2Int> _canStopInRange;
-        // The order being planned, read by _canStopInRange: a cached delegate cannot take it as an argument.
-        private MoveOrder _planning;
+        private readonly Predicate<Vector2Int> _canStopNearTarget;
+        // The target being approached, read by _canStopNearTarget: a cached delegate cannot take it as an argument.
+        private IBoardOccupant _approached;
 
         /// <param name="grid">Board occupancy: buildings are walls.</param>
         /// <param name="occupants">Tells soldiers (walkable) from buildings (walls).</param>
@@ -49,10 +49,13 @@ namespace StrategyDemo.Gameplay.Movement
             _gridView = gridView;
             _isSoldier = IsSoldier;
             _canStopAt = CanStopAt;
-            _canStopInRange = CanStopInRange;
+            _canStopNearTarget = CanStopNearTarget;
             _pathfinder = new Pathfinder(grid, _isSoldier);
             _stopCellSearch = new FreeCellSearch(grid);
         }
+
+        /// <summary>Cells the last A* search examined; tests use it to check an approach does not flood the board.</summary>
+        internal int LastSearchExpandedCount => _pathfinder.ExpandedCount;
 
         /// <summary>True when a soldier may walk onto <paramref name="cell"/>: inside the board and no building there.</summary>
         public bool IsWalkable(Vector2Int cell)
@@ -86,25 +89,29 @@ namespace StrategyDemo.Gameplay.Movement
             Vector2Int start = BodyCell(unit);
             List<Vector2Int> path = order.Path;
             IBoardOccupant target = order.Target;
+            _approached = target;
+            Predicate<Vector2Int> canStop = target != null ? _canStopNearTarget : _canStopAt;
+            bool endsOnStopCell;
             if (target != null)
             {
-                // The near side of the target: for a building, the footprint cell closest to the soldier.
-                order.Goal = GridDistance.ClosestCellInArea(target.Origin, target.Footprint, start);
+                // Every cell within range is a goal, and the search ends at the first free one: no board flood
+                // towards the target's own (blocked) cells.
+                RectInt inRange = GridDistance.WithinRange(target.Origin, target.Footprint, order.Range);
+                endsOnStopCell = _pathfinder.TryFindPath(start, inRange, canStop, path);
+            }
+            else
+            {
+                // Ends at the goal, or at the reachable cell closest to it when the goal cannot be reached.
+                _pathfinder.TryFindPath(start, order.Goal, path);
+                endsOnStopCell = CanStopAt(path[path.Count - 1]);
             }
 
-            // Ends at the goal, or at the reachable cell closest to it when the goal cannot be reached.
-            _pathfinder.TryFindPath(start, order.Goal, path);
-            _planning = order;
-            bool stopsOnPath = target == null ? CanStopAt(path[path.Count - 1]) : TrimAtFirstStopInRange(path);
-            if (!stopsOnPath)
+            if (!endsOnStopCell)
             {
                 // The BFS spreads only through walkable cells, so the cell it finds is connected to the start: the
-                // second search always reaches it. An approach takes the nearest free cell in range, else the nearest
-                // free cell at all; combat lets the soldier wait there until a cell in range frees up.
-                Vector2Int end = path[path.Count - 1];
-                Predicate<Vector2Int> acceptable = target == null ? _canStopAt : _canStopInRange;
-                if (_stopCellSearch.TryFindNearest(end, _isSoldier, acceptable, out Vector2Int free)
-                    || (target != null && _stopCellSearch.TryFindNearest(end, _isSoldier, _canStopAt, out free)))
+                // second search always reaches it. An approach that ends here found no free cell in range at all;
+                // combat lets the soldier wait on this cell until one frees up.
+                if (_stopCellSearch.TryFindNearest(path[path.Count - 1], _isSoldier, canStop, out Vector2Int free))
                 {
                     _pathfinder.TryFindPath(start, free, path);
                 }
@@ -118,33 +125,14 @@ namespace StrategyDemo.Gameplay.Movement
             }
 
             order.Destination = path[path.Count - 1];
-            order.HasStopCell = CanStopAt(order.Destination);
+            order.HasStopCell = canStop(order.Destination);
+            _approached = null;
             if (order.HasStopCell)
             {
                 _reservations.ReserveStopCell(order.Destination, unit.OccupantId);
             }
 
             order.NextIndex = FirstWaypoint(path);
-            _planning = null;
-        }
-
-        /// <summary>
-        /// Cuts <paramref name="path"/> after its first cell that is within range of the target being planned and free
-        /// to stop on, so a ranged soldier stops as soon as it can shoot. False (path unchanged) when there is none.
-        /// </summary>
-        private bool TrimAtFirstStopInRange(List<Vector2Int> path)
-        {
-            for (int i = 0; i < path.Count; i++)
-            {
-                if (CanStopInRange(path[i]))
-                {
-                    // Removing the tail shifts nothing and allocates nothing.
-                    path.RemoveRange(i + 1, path.Count - i - 1);
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static int FirstWaypoint(List<Vector2Int> path)
@@ -167,10 +155,11 @@ namespace StrategyDemo.Gameplay.Movement
             return _pathfinder.IsWalkable(cell) && _reservations.OwnerOf(cell) == GridMap.EmptyId;
         }
 
-        private bool CanStopInRange(Vector2Int cell)
+        private bool CanStopNearTarget(Vector2Int cell)
         {
-            IBoardOccupant target = _planning.Target;
-            return CanStopAt(cell) && GridDistance.ToArea(cell, target.Origin, target.Footprint) <= _planning.Range;
+            // The range area includes the target itself. A building's cells are walls anyway, but a walking soldier
+            // reserves its destination, not the cell it stands in: without this check that cell would look free.
+            return CanStopAt(cell) && GridDistance.ToArea(cell, _approached.Origin, _approached.Footprint) > 0;
         }
 
         private bool IsSoldier(int occupantId)

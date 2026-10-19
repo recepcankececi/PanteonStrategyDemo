@@ -67,7 +67,7 @@ namespace StrategyDemo.Tests.EditMode.UI
             _reservations = new CellReservations(10, 8);
             _factory = new TestUnitFactory(_board);
             var movement = new UnitMovement(_grid, _registry, _reservations, _board.View);
-            _producer = new UnitProducer(_grid, _registry, _factory, movement);
+            _producer = new UnitProducer(_grid, _registry, _reservations, _factory, movement);
 
             var root = new GameObject("InformationPanel", typeof(RectTransform));
             SceneManager.MoveGameObjectToScene(root, _scene);
@@ -264,6 +264,19 @@ namespace StrategyDemo.Tests.EditMode.UI
         }
 
         [Test]
+        public void FollowProductionAvailability_OnlyReservationsChange_StillNoticed()
+        {
+            // Stop-cell reservations alone (no grid change) can leave a soldier nowhere to stand.
+            SelectBuilding(_barracks, new Vector2Int(3, 3));
+            int gridVersion = _grid.Version;
+            ReserveEveryFreeCell();
+            _panel.FollowProductionAvailability();
+
+            Assert.That(_grid.Version, Is.EqualTo(gridVersion), "The test changed reservations only.");
+            Assert.That(_panel.Rows.Select(row => row.IsInteractable), Is.All.False);
+        }
+
+        [Test]
         public void ClickingDisabledRow_ProducesNothing()
         {
             SelectBuilding(_barracks, new Vector2Int(3, 3));
@@ -440,6 +453,21 @@ namespace StrategyDemo.Tests.EditMode.UI
                     if (_grid.GetOccupant(cell) == GridMap.EmptyId)
                     {
                         _grid.Occupy(cell, Vector2Int.one, _registry.NextId());
+                    }
+                }
+            }
+        }
+
+        private void ReserveEveryFreeCell()
+        {
+            for (int y = 0; y < _grid.Height; y++)
+            {
+                for (int x = 0; x < _grid.Width; x++)
+                {
+                    var cell = new Vector2Int(x, y);
+                    if (_grid.GetOccupant(cell) == GridMap.EmptyId && _reservations.OwnerOf(cell) == GridMap.EmptyId)
+                    {
+                        _reservations.ReserveStopCell(cell, _registry.NextId());
                     }
                 }
             }

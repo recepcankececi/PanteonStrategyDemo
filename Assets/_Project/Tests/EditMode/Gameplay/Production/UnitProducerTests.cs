@@ -39,7 +39,7 @@ namespace StrategyDemo.Tests.EditMode.Gameplay.Production
             _soldier = _world.Board.Unit("Soldier1", damage: 10);
             _barracksDefinition = _world.Board.Producer("Barracks", BarracksFootprint, _soldier);
             _factory = new TestUnitFactory(_world.Board);
-            _producer = new UnitProducer(_world.Grid, _world.Registry, _factory, _world.Movement);
+            _producer = new UnitProducer(_world.Grid, _world.Registry, _world.Reservations, _factory, _world.Movement);
             _barracks = _world.Place(_barracksDefinition, BarracksOrigin, SpawnCell);
         }
 
@@ -53,10 +53,26 @@ namespace StrategyDemo.Tests.EditMode.Gameplay.Production
         [Test]
         public void Constructor_NullArgument_Throws()
         {
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(null, _world.Registry, _factory, _world.Movement));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, null, _factory, _world.Movement));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, _world.Registry, null, _world.Movement));
-            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, _world.Registry, _factory, null));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(null, _world.Registry, _world.Reservations, _factory, _world.Movement));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, null, _world.Reservations, _factory, _world.Movement));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, _world.Registry, _world.Reservations, null, _world.Movement));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, _world.Registry, _world.Reservations, _factory, null));
+            Assert.Throws<ArgumentNullException>(() => new UnitProducer(_world.Grid, _world.Registry, null, _factory, _world.Movement));
+        }
+
+        [Test]
+        public void AvailabilityVersion_ChangesWithGridOrReservations_NotOnReads()
+        {
+            int version = _producer.AvailabilityVersion;
+            _producer.CanProduce(_barracks);
+            Assert.That(_producer.AvailabilityVersion, Is.EqualTo(version), "Asking changes nothing.");
+
+            _world.Place(new Vector2Int(0, 0), Vector2Int.one, 10);
+            Assert.That(_producer.AvailabilityVersion, Is.Not.EqualTo(version), "A grid change.");
+            version = _producer.AvailabilityVersion;
+
+            _world.Reservations.ReserveStopCell(new Vector2Int(Width - 1, Height - 1), _world.Registry.NextId());
+            Assert.That(_producer.AvailabilityVersion, Is.Not.EqualTo(version), "A reservation change.");
         }
 
         [Test]

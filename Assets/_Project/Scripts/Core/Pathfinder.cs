@@ -6,8 +6,8 @@ namespace StrategyDemo.Core
 {
     /// <summary>
     /// Shortest paths on the <see cref="GridMap"/> with A* (A1, R6): 8 directions, integer costs,
-    /// octile heuristic, no corner cutting. When the goal cannot be reached, the path leads to the reachable cell
-    /// closest to it instead.
+    /// octile heuristic, no corner cutting. The goal is one cell or a whole area (the cells within attack range of a
+    /// target). When the goal cannot be reached, the path leads to the reachable cell closest to it instead.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -77,6 +77,22 @@ namespace StrategyDemo.Core
             return StraightStepCost * Mathf.Max(dx, dy) + (DiagonalStepCost - StraightStepCost) * Mathf.Min(dx, dy);
         }
 
+        /// <summary>
+        /// Octile distance from <paramref name="from"/> to the nearest cell of <paramref name="area"/>; 0 inside it.
+        /// Never more than the true cost to any cell of the area, so a search towards the whole area stays shortest.
+        /// </summary>
+        public static int HeuristicToArea(Vector2Int from, RectInt area)
+        {
+            // The nearest cell of a rectangle: clamp each axis on its own (xMax and yMax are exclusive).
+            var nearest = new Vector2Int(
+                Mathf.Clamp(from.x, area.xMin, area.xMax - 1),
+                Mathf.Clamp(from.y, area.yMin, area.yMax - 1));
+            return Heuristic(from, nearest);
+        }
+
+        /// <summary>Cells the last search took off the open list: how much of the board it examined.</summary>
+        public int ExpandedCount { get; private set; }
+
         /// <summary>True when <paramref name="cell"/> is on the board and a soldier may walk on it.</summary>
         public bool IsWalkable(Vector2Int cell)
         {
@@ -105,6 +121,33 @@ namespace StrategyDemo.Core
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/> or <paramref name="goal"/> is off the board.</exception>
         public bool TryFindPath(Vector2Int start, Vector2Int goal, List<Vector2Int> path)
         {
+            if (!_grid.IsInside(goal))
+            {
+                throw new ArgumentOutOfRangeException(nameof(goal), goal, "Goal is outside the grid.");
+            }
+
+            return TryFindPath(start, new RectInt(goal, Vector2Int.one), null, path);
+        }
+
+        /// <summary>
+        /// Multi-goal search: a shortest path from <paramref name="start"/> to the nearest cell of
+        /// <paramref name="goalArea"/> that <paramref name="acceptGoal"/> accepts, e.g. the nearest free cell within
+        /// attack range. It stops at the first such cell taken off the open list, so it examines only the cells between
+        /// the walker and the area, not the whole board.
+        /// </summary>
+        /// <param name="start">Where the walker stands. Not checked for walkability: the walker is already there.</param>
+        /// <param name="goalArea">Cells that may end the path; may reach past the board's edges.</param>
+        /// <param name="acceptGoal">Extra test for a reachable cell of the area, or null to accept any. Pass a cached delegate.</param>
+        /// <param name="path">Caller-owned list, cleared and refilled, so repeated searches allocate nothing.</param>
+        /// <returns>
+        /// True when the path ends on an accepted goal cell. False when none can be reached: the path then ends at the
+        /// reachable cell closest to the area (smallest heuristic, then cheapest), and is just <paramref name="start"/>
+        /// when no cell is closer than the start itself.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/> is off the board or <paramref name="goalArea"/> is empty.</exception>
+        public bool TryFindPath(Vector2Int start, RectInt goalArea, Predicate<Vector2Int> acceptGoal, List<Vector2Int> path)
+        {
             if (path == null)
             {
                 throw new ArgumentNullException(nameof(path));
@@ -115,15 +158,14 @@ namespace StrategyDemo.Core
                 throw new ArgumentOutOfRangeException(nameof(start), start, "Start is outside the grid.");
             }
 
-            if (!_grid.IsInside(goal))
+            if (goalArea.width <= 0 || goalArea.height <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(goal), goal, "Goal is outside the grid.");
+                throw new ArgumentOutOfRangeException(nameof(goalArea), goalArea, "Goal area is empty.");
             }
 
             BeginSearch();
             int startNode = ToNode(start);
-            int goalNode = ToNode(goal);
-            int startH = Heuristic(start, goal);
+            int startH = HeuristicToArea(start, goalArea);
             Reach(startNode, 0, NoParent);
             _open.Push(startNode, startH, startH);
 
@@ -135,29 +177,31 @@ namespace StrategyDemo.Core
             {
                 int node = _open.Pop();
                 _closedStamp[node] = _searchId;
-                if (node == goalNode)
+                ExpandedCount++;
+                Vector2Int cell = ToCell(node);
+                // Tested when taken off the open list, not when pushed: only then is its cost known to be the cheapest.
+                if (goalArea.Contains(cell) && (acceptGoal == null || acceptGoal(cell)))
                 {
                     WritePath(node, path);
                     return true;
                 }
 
-                Vector2Int cell = ToCell(node);
-                int h = Heuristic(cell, goal);
+                int h = HeuristicToArea(cell, goalArea);
                 if (h < closestH || (h == closestH && _costFromStart[node] < _costFromStart[closestNode]))
                 {
                     closestNode = node;
                     closestH = h;
                 }
 
-                ExpandNeighbours(node, cell, goal);
+                ExpandNeighbours(node, cell, goalArea);
             }
 
-            // Open list exhausted: every cell connected to the start was examined and none was the goal.
+            // Open list exhausted: every cell connected to the start was examined and none was a goal.
             WritePath(closestNode, path);
             return false;
         }
 
-        private void ExpandNeighbours(int node, Vector2Int cell, Vector2Int goal)
+        private void ExpandNeighbours(int node, Vector2Int cell, RectInt goalArea)
         {
             for (int i = 0; i < Steps.Length; i++)
             {
@@ -186,7 +230,7 @@ namespace StrategyDemo.Core
                 int cost = _costFromStart[node] + (isDiagonal ? DiagonalStepCost : StraightStepCost);
                 if (_reachedStamp[nextNode] != _searchId)
                 {
-                    int h = Heuristic(next, goal);
+                    int h = HeuristicToArea(next, goalArea);
                     Reach(nextNode, cost, node);
                     _open.Push(nextNode, cost + h, h);
                 }
@@ -194,7 +238,7 @@ namespace StrategyDemo.Core
                 {
                     // Reached before, but this way is cheaper: keep it open with the better cost.
                     Reach(nextNode, cost, node);
-                    _open.DecreaseF(nextNode, cost + Heuristic(next, goal));
+                    _open.DecreaseF(nextNode, cost + HeuristicToArea(next, goalArea));
                 }
             }
         }
@@ -211,6 +255,7 @@ namespace StrategyDemo.Core
 
             _searchId++;
             _open.Clear();
+            ExpandedCount = 0;
         }
 
         private void Reach(int node, int costFromStart, int parent)

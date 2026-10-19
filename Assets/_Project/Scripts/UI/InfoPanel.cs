@@ -53,6 +53,8 @@ namespace StrategyDemo.UI
         // Producing building shown, whose buttons follow whether it can produce; null for anything else.
         private Building _shownProducer;
         private bool _canProduce;
+        // UnitProducer.AvailabilityVersion when _canProduce was computed; while it is unchanged, so is the answer.
+        private int _availabilityVersion;
 
         /// <summary>Production rows currently shown, top to bottom.</summary>
         internal IReadOnlyList<UnitProductionItemView> Rows => _rows;
@@ -153,10 +155,9 @@ namespace StrategyDemo.UI
         }
 
         /// <summary>
-        /// Follows whether the shown building can produce. Polled, not event-driven: it depends on the grid and on the
-        /// reservations, and reservations raise no event. Normally the search stops at a free cell next to the spawn
-        /// cell; when production is impossible it walks the whole reachable area, at worst one pass over the whole
-        /// board per frame. It allocates nothing and runs only while a producer is selected.
+        /// Follows whether the shown building can produce. The answer depends on the grid and on the reservations, so
+        /// it is computed again only when <see cref="UnitProducer.AvailabilityVersion"/> says one of them changed: a
+        /// still board costs one integer comparison per frame, not a search.
         /// </summary>
         private void Update()
         {
@@ -166,11 +167,12 @@ namespace StrategyDemo.UI
         /// <summary>One poll of <see cref="Update"/>; internal so EditMode tests can run it without the player loop.</summary>
         internal void FollowProductionAvailability()
         {
-            if (_shownProducer == null)
+            if (_shownProducer == null || _producer.AvailabilityVersion == _availabilityVersion)
             {
                 return;
             }
 
+            _availabilityVersion = _producer.AvailabilityVersion;
             bool canProduce = _producer.CanProduce(_shownProducer);
             if (canProduce != _canProduce)
             {
@@ -181,6 +183,7 @@ namespace StrategyDemo.UI
         private void ShowProductionAvailability(bool canProduce)
         {
             _canProduce = canProduce;
+            _availabilityVersion = _producer.AvailabilityVersion;
             for (int i = 0; i < _rows.Count; i++)
             {
                 _rows[i].SetInteractable(canProduce);

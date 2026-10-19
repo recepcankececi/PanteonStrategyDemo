@@ -205,5 +205,24 @@ namespace StrategyDemo.Tests.EditMode.Core
 
             Assert.That(raised, Is.Zero);
         }
+
+        [Test]
+        public void Version_ChangesOnOccupyAndRelease_NotOnReadsOrFailedAttempts()
+        {
+            int start = _grid.Version;
+            _grid.IsAreaFree(Vector2Int.zero, BarracksSize);
+            _grid.GetOccupant(Vector2Int.zero);
+            Assert.That(_grid.Version, Is.EqualTo(start), "Reads change nothing.");
+
+            _grid.Occupy(Vector2Int.zero, BarracksSize, BuildingId);
+            int afterOccupy = _grid.Version;
+            Assert.That(afterOccupy, Is.Not.EqualTo(start));
+
+            Assert.Throws<InvalidOperationException>(() => _grid.Occupy(Vector2Int.zero, BarracksSize, OtherBuildingId));
+            Assert.That(_grid.Version, Is.EqualTo(afterOccupy), "A refused change is no change.");
+
+            _grid.Release(Vector2Int.zero, BarracksSize, BuildingId);
+            Assert.That(_grid.Version, Is.Not.EqualTo(afterOccupy));
+        }
     }
 }

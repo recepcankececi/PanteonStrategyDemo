@@ -51,6 +51,13 @@ namespace StrategyDemo.Core
             _isPermanent = new bool[width * height];
         }
 
+        /// <summary>
+        /// Goes up on every change (no event: reservations move on every plan, and nothing needs to react at once).
+        /// A reader that caches something computed from them compares it with the value it saw. Only equality matters,
+        /// so wrapping around is harmless.
+        /// </summary>
+        public int Version { get; private set; }
+
         /// <summary>Number of owners holding a cell, of either kind.</summary>
         public int Count => _cellOfOwner.Count;
 
@@ -98,6 +105,7 @@ namespace StrategyDemo.Core
             Release(ownerId);
             _owners[index] = ownerId;
             _cellOfOwner.Add(ownerId, cell);
+            Version++;
         }
 
         /// <summary>
@@ -120,6 +128,7 @@ namespace StrategyDemo.Core
             _owners[index] = ownerId;
             _isPermanent[index] = true;
             _cellOfOwner.Add(ownerId, cell);
+            Version++;
         }
 
         /// <summary>Lets go of the cell <paramref name="ownerId"/> holds, of either kind. Returns false when it held none.</summary>
@@ -134,6 +143,7 @@ namespace StrategyDemo.Core
             _owners[index] = GridMap.EmptyId;
             _isPermanent[index] = false;
             _cellOfOwner.Remove(ownerId);
+            Version++;
             return true;
         }
 

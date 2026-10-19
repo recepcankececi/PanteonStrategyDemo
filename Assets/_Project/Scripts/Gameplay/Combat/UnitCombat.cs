@@ -42,7 +42,9 @@ namespace StrategyDemo.Gameplay.Combat
         private readonly IAttackRule _rule;
         private readonly OccupantDespawner _despawner;
         private readonly ObjectPool<AttackOrder> _orderPool;
+        // As in UnitMovement: the list is the update order, the dictionary the O(1) lookup; both hold the same orders.
         private readonly List<AttackOrder> _orders = new List<AttackOrder>();
+        private readonly Dictionary<int, AttackOrder> _orderByAttackerId = new Dictionary<int, AttackOrder>();
         // Scratch lists, kept to avoid allocating per command or per frame.
         private readonly List<Unit> _attackers = new List<Unit>();
         private readonly List<IDamageable> _killed = new List<IDamageable>();
@@ -170,12 +172,25 @@ namespace StrategyDemo.Gameplay.Combat
             }
 
             _clock += deltaTime;
-            for (int i = 0; i < _orders.Count; i++)
+            try
             {
-                Step(_orders[i], deltaTime);
+                for (int i = 0; i < _orders.Count; i++)
+                {
+                    Step(_orders[i], deltaTime);
+                }
             }
+            finally
+            {
+                // Despawning raises Despawned, which removes orders: done after the loop, never inside it. In a finally
+                // block, so an exception thrown halfway through the loop cannot leave a dead object on the board. If a
+                // despawn itself threw here, its exception would replace the first one: accepted, both are bugs, and
+                // an object left in _killed is skipped next frame (Despawn returns false once it is gone).
+                DespawnKilled();
+            }
+        }
 
-            // Despawning raises Despawned, which removes orders: done after the loop, never inside it.
+        private void DespawnKilled()
+        {
             for (int i = 0; i < _killed.Count; i++)
             {
                 _despawner.Despawn(_killed[i]);
@@ -197,13 +212,20 @@ namespace StrategyDemo.Gameplay.Combat
             bool inRange = IsInRange(attacker, target);
             if (order.State == CombatState.Attacking)
             {
+                // A soldier that started firing while waiting for a stop cell walks off once one frees up: no hits on
+                // the way, it attacks again when it stands (below, as a chaser).
+                if (_movement.IsWalking(attacker))
+                {
+                    order.State = CombatState.Chasing;
+                    return;
+                }
+
                 if (inRange)
                 {
                     TryHit(order);
                 }
                 else
                 {
-                    // The target walked off: follow it.
                     order.State = CombatState.Chasing;
                     PlanChase(order);
                 }
@@ -211,9 +233,10 @@ namespace StrategyDemo.Gameplay.Combat
                 return;
             }
 
-            // Chasing: attack only once standing on a cell in range, never while still walking to it.
-            bool isMoving = _movement.IsMoving(attacker);
-            if (inRange && !isMoving)
+            // Chasing: attack only once standing in range, never while still walking. "Standing" is not "move order
+            // done": a soldier whose order waits for a free stop cell stands still and may fire.
+            bool isWalking = _movement.IsWalking(attacker);
+            if (inRange && !isWalking)
             {
                 order.State = CombatState.Attacking;
                 TryHit(order);
@@ -222,8 +245,8 @@ namespace StrategyDemo.Gameplay.Combat
 
             order.RepathTimer -= deltaTime;
             // Planning again while nothing changed would only restart the walk from the current cell. A building
-            // never moves, so its chasers plan again only once they stopped out of range.
-            if (order.RepathTimer <= 0f && (target.Origin != order.PlannedTargetCell || !isMoving))
+            // never moves, so its chasers plan again only once they stand out of range.
+            if (order.RepathTimer <= 0f && (target.Origin != order.PlannedTargetCell || !isWalking))
             {
                 PlanChase(order);
             }
@@ -278,21 +301,15 @@ namespace StrategyDemo.Gameplay.Combat
             AttackOrder order = _orderPool.Get();
             order.Attacker = unit;
             _orders.Add(order);
+            _orderByAttackerId.Add(unit.OccupantId, order);
             return order;
         }
 
         private AttackOrder FindOrder(Unit unit)
         {
-            // A loop over the few attackers; no dictionary to keep in sync with the list.
-            for (int i = 0; i < _orders.Count; i++)
-            {
-                if (ReferenceEquals(_orders[i].Attacker, unit))
-                {
-                    return _orders[i];
-                }
-            }
-
-            return null;
+            // Ids are never reused, and an order is dropped before its soldier goes back to the pool (id 0): the id alone
+            // identifies the soldier.
+            return _orderByAttackerId.TryGetValue(unit.OccupantId, out AttackOrder order) ? order : null;
         }
 
         private void RemoveOrder(AttackOrder order)
@@ -305,6 +322,7 @@ namespace StrategyDemo.Gameplay.Combat
             AttackOrder order = _orders[index];
             _orders[index] = _orders[_orders.Count - 1];
             _orders.RemoveAt(_orders.Count - 1);
+            _orderByAttackerId.Remove(order.Attacker.OccupantId);
             _orderPool.Release(order);
         }
     }
