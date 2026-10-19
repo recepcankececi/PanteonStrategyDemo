@@ -43,6 +43,28 @@ Tools/ArtGen/            Node sprite generator (outside Assets/, never imported 
 ```
 Template leftovers (SampleScene, `Assets/Settings`, `InputSystem_Actions`) are moved into `_Project` or removed in M0 via Unity.
 
+## Code map (feature → folder → key classes)
+Paths under `Assets/_Project/Scripts/`. Namespace = folder (`StrategyDemo.Gameplay.Movement`, ...). Tests mirror it
+under `Tests/EditMode/` (`Core/`, `Data/`, `Gameplay/<Feature>/`, `UI/`, `Project/` for scene/settings/build,
+`Support/` for shared test helpers and the test of `AllocationAssert`). Folders with a `CLAUDE.md` have extra rules: read it before editing there.
+
+| Feature | Folder | Key classes |
+|---|---|---|
+| Grid, A*, reservations, pool, math | `Core/` | `GridMap`, `Pathfinder`, `CellReservations`, `FreeCellSearch`, `ObjectPool<T>` |
+| Data (ScriptableObjects) | `Data/` | `BuildingDefinition`, `UnitDefinition`, `BuildingCatalog`, `GridConfig` |
+| Board (base layer, no feature deps) | `Gameplay/Board/` | `GridView`, `IBoardOccupant`, `OccupantRegistry`, `PointerInput` |
+| Despawn (the one removal path) | `Gameplay/Despawn/` | `OccupantDespawner`, `IDespawnable`, `DespawnContext` |
+| Buildings | `Gameplay/Buildings/` | `Building`, `BuildingFactory` |
+| Soldiers | `Gameplay/Units/` | `Unit`, `UnitFactory`, `SpriteFlipbook` |
+| Movement | `Gameplay/Movement/` | `UnitMovement` (API) → `MovePlanner`, `MoveStepper`, `HeldCellTracker`; `UnitMovementDriver` |
+| Combat | `Gameplay/Combat/` | `UnitCombat`, `Health`, `IAttackRule`, `UnitCombatDriver` |
+| Effects | `Gameplay/Effects/` | `CombatEffects`, `HealthBar`, `HitFlash` |
+| Selection + right-click orders | `Gameplay/Selection/` | `SelectionService`, `SelectionInputHandler`, `CommandInputHandler`, `SelectionHighlight` |
+| Placement | `Gameplay/Placement/` | `BuildingPlacer`, `PlacementGhost`, `PlacementInputHandler` |
+| Production | `Gameplay/Production/` | `UnitProducer` |
+| UI | `UI/` | `ProductionMenu`, `InfoPanel` |
+| Composition root, input | `App/` | `GameBootstrap`, `InputController` |
+
 ## Code standards
 - Namespace `StrategyDemo.<Module>`, matching the folder. Never use `Editor` as a namespace segment (clashes with `UnityEditor.Editor`).
 - PascalCase types/methods/properties; `_camelCase` private fields; `[SerializeField] private` over public fields; interfaces `IName`.

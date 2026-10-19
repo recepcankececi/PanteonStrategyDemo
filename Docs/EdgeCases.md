@@ -1,7 +1,8 @@
 # Edge cases
 
-Every row names the EditMode test(s) that prove the handling (class `.` method, all in
-`Assets/_Project/Tests/EditMode/`), or says **accepted limit** when the case is deliberately not handled.
+Every row names the EditMode test(s) that prove the handling (class `.` method, all under
+`Assets/_Project/Tests/EditMode/`, in the folder of their feature: e.g. `UnitMovementTests` in `Gameplay/Movement/`,
+`GridMapTests` in `Core/`), or says **accepted limit** when the case is deliberately not handled.
 Run them with `Window > General > Test Runner > EditMode > Run All`.
 
 ## Grid and coordinates

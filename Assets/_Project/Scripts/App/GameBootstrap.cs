@@ -1,7 +1,16 @@
 using System;
 using StrategyDemo.Core;
 using StrategyDemo.Data;
-using StrategyDemo.Gameplay;
+using StrategyDemo.Gameplay.Board;
+using StrategyDemo.Gameplay.Buildings;
+using StrategyDemo.Gameplay.Combat;
+using StrategyDemo.Gameplay.Despawn;
+using StrategyDemo.Gameplay.Effects;
+using StrategyDemo.Gameplay.Movement;
+using StrategyDemo.Gameplay.Placement;
+using StrategyDemo.Gameplay.Production;
+using StrategyDemo.Gameplay.Selection;
+using StrategyDemo.Gameplay.Units;
 using StrategyDemo.UI;
 using UnityEngine;
 

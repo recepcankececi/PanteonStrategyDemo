@@ -39,12 +39,12 @@ There is no enemy faction: as the case allows, soldiers attack your own building
 | Unlimited production, no production time | Placing and producing are instant and unlimited while free cells remain | `BuildingPlacer.TryPlace`, `UnitProducer.TryProduce` |
 | Information Panel shows the selected building; producers list their units | Image, name, HP, size; Barracks adds its three soldiers with image and damage | `Scripts/UI/InfoPanel.cs` |
 | Only Barracks produce units; Power Plant has no production menu | Production list exists only when the definition has producible units | `BuildingDefinition.CanProduceUnits` |
-| Soldiers: left-click select, right-click move via shortest path around buildings | A\* over the grid, buildings are walls | `Scripts/Core/Pathfinder.cs`, `Scripts/Gameplay/UnitMovement.cs` |
+| Soldiers: left-click select, right-click move via shortest path around buildings | A\* over the grid, buildings are walls | `Scripts/Core/Pathfinder.cs`, `Scripts/Gameplay/Movement/` |
 | Each Barracks has a spawn point | A marked cell beside the Barracks, chosen when it is placed (middle of the bottom side, else right, top, left) and kept for life. Soldiers always appear there and walk to the nearest free cell; no building and no stopping soldier may take it. A spot with no usable side is red | `SpawnSides`, `BuildingPlacer`, `UnitProducer` |
 | 3 soldier types, HP 10; damage 10 / 5 / 2 | Soldier1 = **Assault** (damage 10, range 2), Soldier2 = **Rifleman** (5, range 3), Soldier3 = **Scout** (2, range 4); all HP 10, every shot draws a tracer | `ScriptableObjects/Units/` |
 | Building HP: Barracks 100, Power Plant 50, others their own | 100, 50, Command Center 200, Supply Depot 60, Radar 80, Guard Tower 120 | `ScriptableObjects/Buildings/` |
-| Right-click attacks a soldier or building | Selected soldiers chase the target, then hit it on an interval | `Scripts/Gameplay/UnitCombat.cs` |
-| Destroyed at HP 0 | One despawn path frees cells, selection and attackers, returns the object to its pool | `Scripts/Gameplay/OccupantDespawner.cs` |
+| Right-click attacks a soldier or building | Selected soldiers chase the target, then hit it on an interval | `Scripts/Gameplay/Combat/UnitCombat.cs` |
+| Destroyed at HP 0 | One despawn path frees cells, selection and attackers, returns the object to its pool | `Scripts/Gameplay/Despawn/OccupantDespawner.cs` |
 | Batching, SetPass calls < 20 | **9 SetPass** measured in a 102-soldier stress scene (Game view stats, Frame Debugger) | see *Rendering* below |
 | Works across aspect ratios; resizable window | Camera fits the board between the side panels; Canvas Scaler *Scale With Screen Size*; resizable window | `BoardCameraFitter`, `CameraFraming`, `MinimumWindowSize` |
 | Production Menu with infinite scroll | Rows wrap around endlessly; a fixed set of rows is recycled | `Scripts/UI/ProductionMenu.cs` |
@@ -61,12 +61,28 @@ Paths above are relative to `Assets/_Project/`. Every logic rule in the table ha
 Assets/_Project/Scripts/
   Core/          plain C#, no Unity scene dependencies: grid, A*, reservations, object pool, scroll math
   Data/          ScriptableObject definitions: buildings, units, catalog, grid, effects
-  Gameplay/      board rules and views: placement, selection, production, movement, combat, despawn
+  Gameplay/      board rules and views, one folder per feature:
+    Board/       base layer every feature uses: GridView, occupant registry, per-frame input snapshot
+    Despawn/     the single path that takes a destroyed building or soldier off the board
+    Buildings/   Building and its pooled factory
+    Units/       Unit, its pooled factory, walk-cycle flipbook
+    Movement/    UnitMovement (public API) with MovePlanner, MoveStepper, HeldCellTracker
+    Combat/      health, attack rule, UnitCombat
+    Effects/     tracers, health bars, hit flash
+    Selection/   click and box selection, right-click move/attack orders, highlight
+    Placement/   BuildingPlacer, placement preview
+    Production/  UnitProducer
   UI/            Production Menu, Information Panel
   App/           composition root (GameBootstrap) and input polling
   EditorTools/   build script, generated-art import rules (editor only)
 ```
 
+- **Feature folders.** Inside `Gameplay` each feature has its own folder and namespace
+  (`StrategyDemo.Gameplay.Movement`, ...), and the tests mirror the same tree under `Tests/EditMode/`. A change to one
+  feature is found, read and reviewed in one place; files stay small and single-purpose (e.g. movement is a public
+  `UnitMovement` plus three internal helpers for planning, stepping and grid-cell holding). `Board` is the base layer
+  and uses no other feature; the features above it still reference each other where the game needs it (a `Unit` has
+  a `Health` and can be despawned), which one assembly allows.
 - **One assembly per module.** `Core` and `Data` reference nothing; `Gameplay` uses them; `UI` sits on top of
   `Gameplay`; only `App` sees everything. A test fails if a reference points the wrong way.
 - **Composition root.** `GameBootstrap` is the only place that creates services and wires them; read top to bottom

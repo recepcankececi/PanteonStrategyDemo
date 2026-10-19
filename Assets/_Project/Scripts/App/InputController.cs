@@ -1,5 +1,7 @@
 using System;
-using StrategyDemo.Gameplay;
+using StrategyDemo.Gameplay.Board;
+using StrategyDemo.Gameplay.Placement;
+using StrategyDemo.Gameplay.Selection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
